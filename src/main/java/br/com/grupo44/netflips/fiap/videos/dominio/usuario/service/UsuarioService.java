@@ -4,19 +4,24 @@ import br.com.grupo44.netflips.fiap.videos.dominio.usuario.dto.UsuarioDTO;
 import br.com.grupo44.netflips.fiap.videos.dominio.usuario.entities.Usuario;
 import br.com.grupo44.netflips.fiap.videos.dominio.usuario.repository.UsuarioRepository;
 import com.mongodb.DuplicateKeyException;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class UsuarioService {
@@ -29,13 +34,30 @@ public class UsuarioService {
         this.mongoTemplate = mongoTemplate;
     }
 
-    public List<UsuarioDTO> findAll(String nome, String login) {
-        Criteria criteria = new Criteria();
-        if (nome != null && !nome.isBlank()) {
-            criteria.and("nome").regex(nome, "i");
+    public List<String> validate(UsuarioDTO dto){
+        Set<ConstraintViolation<UsuarioDTO>> violacoes = Validation.buildDefaultValidatorFactory().getValidator().validate(dto);
+        List<String> violacoesToList = violacoes.stream()
+                .map((violacao) -> violacao.getPropertyPath() + ":" + violacao.getMessage())
+                .collect(Collectors.toList());
+        return violacoesToList;
+    }
+    public UsuarioDTO retornaFiltroFormatado(String nome, String login){
+        UsuarioDTO filtro= new UsuarioDTO();
+        if (nome != null && !nome.isBlank()){
+            filtro.setNome(nome);
         }
-        if (login != null && !login.isBlank()) {
-            criteria.and("login").regex(login, "i");
+        if (login != null && !login.isBlank()){
+            filtro.setLogin(login);
+        }
+        return filtro;
+    }
+    public Page<UsuarioDTO> findAll(UsuarioDTO filtro, PageRequest page) {
+        Criteria criteria = new Criteria();
+        if (filtro.getNome() != null && !filtro.getNome().isBlank()) {
+            criteria.and("nome").regex(filtro.getNome(), "i");
+        }
+        if (filtro.getLogin() != null && !filtro.getLogin().isBlank()) {
+            criteria.and("login").regex(filtro.getLogin(), "i");
         }
         Query query = new Query(criteria);
         List<Usuario> listaUsuarios = mongoTemplate.find(query, Usuario.class);
@@ -44,9 +66,10 @@ public class UsuarioService {
             for (Usuario usuario : listaUsuarios) {
                 listaUsuariosDTO.add(new UsuarioDTO(usuario));
             }
-            return listaUsuariosDTO;
+            return new PageImpl<>(listaUsuariosDTO, page, listaUsuarios.size());
         }
-        return null;
+
+        return Page.empty();
     }
 
     public UsuarioDTO findById(String codigo) {
@@ -55,53 +78,55 @@ public class UsuarioService {
     }
 
     @Transactional
-    public ResponseEntity<?> insert(UsuarioDTO usuarioDTO) {
+    public UsuarioDTO insert(UsuarioDTO usuarioDTO) {
         Usuario entity = new Usuario();
         BeanUtils.copyProperties(usuarioDTO, entity);
+
         try {
             Usuario usuarioSalvo = usuarioRepository.save(entity);
-            return ResponseEntity.status(HttpStatus.CREATED).body(new UsuarioDTO(usuarioSalvo));
+            return new UsuarioDTO(usuarioSalvo);
         } catch (DuplicateKeyException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Artigo ja existe na coleção");
+            throw new RuntimeException("Usuário já cadastrado: " + e.getMessage());
         } catch (OptimisticLockingFailureException ex) {
             Usuario atualizado = usuarioRepository.findById(usuarioDTO.getCodigo()).orElse(null);
+
             if (atualizado != null) {
-                BeanUtils.copyProperties(usuarioDTO, entity);
-                atualizado.setVERSION(atualizado.getVERSION() + 1);
+                BeanUtils.copyProperties(usuarioDTO, atualizado);
                 atualizado = usuarioRepository.save(atualizado);
-                return ResponseEntity.status(HttpStatus.CREATED).body(new UsuarioDTO(atualizado));
+                return new UsuarioDTO(atualizado);
             } else {
-                throw new RuntimeException("Artigo não encontrado");
+                throw new RuntimeException("Usuário não encontrado");
             }
         } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro interno ao criar: " + ex.getMessage());
+            throw new RuntimeException("Erro interno ao criar: " + ex.getMessage());
         }
     }
 
+
     @Transactional
-    public ResponseEntity<?> update(String codigo, UsuarioDTO dto) {
+    public UsuarioDTO update(String codigo, UsuarioDTO dto) {
         try {
             Usuario entity = usuarioRepository.findById(codigo).orElseThrow(() -> new IllegalArgumentException("Video não encontrado"));
             BeanUtils.copyProperties(dto, entity);
             entity = usuarioRepository.save(entity);
-            return ResponseEntity.status(HttpStatus.OK).body(new UsuarioDTO(entity));
+            return new UsuarioDTO(entity);
         } catch (OptimisticLockingFailureException ex) {
             Usuario atualizado = usuarioRepository.findById(codigo).orElse(null);
             if (atualizado != null) {
                 BeanUtils.copyProperties(dto, atualizado);
                 atualizado.setVERSION(atualizado.getVERSION() + 1);
                 atualizado = usuarioRepository.save(atualizado);
-                return ResponseEntity.status(HttpStatus.OK).body(new UsuarioDTO(atualizado));
+                return new UsuarioDTO(atualizado);
             } else {
                 throw new RuntimeException("Artigo não encontrado");
             }
         } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro interno ao atualizar: " + ex.getMessage());
+            throw new RuntimeException("Erro interno ao Atualizar: " + ex.getMessage());
         }
     }
 
     @Transactional
-    public void deleteById(String codigo) {
+    public void delete(String codigo) {
         usuarioRepository.deleteById(codigo);
     }
 }

@@ -4,12 +4,16 @@ package br.com.grupo44.netflips.fiap.videos.dominio.usuario.dto;
 import br.com.grupo44.netflips.fiap.videos.dominio.usuario.entities.Usuario;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class UsuarioDTO {
     @Id
     private String codigo;
