@@ -1,0 +1,157 @@
+package br.com.grupo44.netflips.fiap.videos.dominio.exibicao.service;
+
+import br.com.grupo44.netflips.fiap.videos.dominio.exibicao.dto.ExibicaoDTO;
+import br.com.grupo44.netflips.fiap.videos.dominio.exibicao.entity.Exibicao;
+import br.com.grupo44.netflips.fiap.videos.dominio.exibicao.repository.ExibicaoRepository;
+import br.com.grupo44.netflips.fiap.videos.dominio.usuario.entities.Usuario;
+import br.com.grupo44.netflips.fiap.videos.dominio.usuario.repository.UsuarioRepository;
+import br.com.grupo44.netflips.fiap.videos.dominio.video.dto.VideoDTO;
+import br.com.grupo44.netflips.fiap.videos.dominio.video.entities.Video;
+import br.com.grupo44.netflips.fiap.videos.dominio.video.repository.VideoRepository;
+import com.mongodb.DuplicateKeyException;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+public class ExibicaoService {
+    @Autowired
+    private ExibicaoRepository exibicaoRepository;
+
+    @Autowired
+    private VideoRepository videoRepository;
+
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+
+    private final MongoTemplate mongoTemplate;
+
+    public ExibicaoService(MongoTemplate mongoTemplate) {
+        this.mongoTemplate = mongoTemplate;
+    }
+
+    public List<String> validate(ExibicaoDTO dto){
+        Set<ConstraintViolation<ExibicaoDTO>> violacoes = Validation.buildDefaultValidatorFactory().getValidator().validate(dto);
+        List<String> violacoesToList = violacoes.stream()
+                .map((violacao) -> violacao.getPropertyPath() + ":" + violacao.getMessage())
+                .collect(Collectors.toList());
+        return violacoesToList;
+    }
+    public Page<ExibicaoDTO> findAll(ExibicaoDTO filtro, PageRequest page) {
+        Criteria criteria = new Criteria();
+
+        if (filtro.getUsuario().getCodigo() != null) {
+            criteria.and("usuario.codigo").is(filtro.getUsuario().getCodigo());
+        }
+        if (!filtro.getVideo().getCodigo() != null) {
+            criteria.and("video.codigo").is(filtro.getVideo().getCodigo())
+        }
+
+        Query query = new Query(criteria);
+        query.with(page);
+
+        List<Exibicao> listaExibicao = mongoTemplate.find(query, Exibicao.class);
+
+        if (listaExibicao != null && !listaExibicao.isEmpty()) {
+            List<ExibicaoDTO> listaExibicaoDTO = new ArrayList<>();
+            for (Exibicao exibicao : listaExibicao) {
+                listaExibicaoDTO.add(new ExibicaoDTO(exibicao, exibicao.getUsuario(),exibicao.getVideo()));
+            }
+            return new PageImpl<>(listaExibicaoDTO, page, listaExibicao.size());
+        }
+
+        return Page.empty();
+    }
+
+
+    public ExibicaoDTO findById(String codigo) {
+        var exibicao = exibicaoRepository.findById(codigo).orElseThrow(() -> new IllegalArgumentException("Video não encontrada"));
+        return new ExibicaoDTO(exibicao, exibicao.getUsuario(),exibicao.getVideo());
+    }
+    @Transactional
+    public VideoDTO insert(VideoDTO videoDTO) {
+        Video entity = new Video();
+        mapperDtoToEntity(videoDTO,entity);
+        if (entity.getAutor().getCodigo() != null){
+            Usuario autor = usuarioRepository.findById(entity.getAutor().getCodigo()).orElseThrow(() -> new IllegalArgumentException("\"Codigo autor nao encontrado\""));
+            entity.setAutor(autor);
+        } else{
+            entity.setAutor(null);
+        }
+        try {
+            Video videoSalvo = videoRepository.save(entity);
+            return new VideoDTO(videoSalvo, videoSalvo.getAutor());
+        } catch (DuplicateKeyException e){
+            throw new RuntimeException("Artigo ja existe na coleção");
+        } catch (OptimisticLockingFailureException ex){
+            //Trata erro concorrencia
+            //1 - Recupera artigo
+            Video atualizado = videoRepository.findById(videoDTO.getCodigo()).orElse(null);
+            if (atualizado != null){
+                //2- Atualiza campos
+                mapperDtoToEntity(videoDTO,atualizado);
+                //3- Atualiza status de forma incremental
+                atualizado.setVERSION( atualizado.getVERSION() + 1);
+                //4 - Tenta salvar novamente
+                atualizado = videoRepository.save(atualizado);
+                return new VideoDTO(atualizado, atualizado.getAutor());
+            } else {
+                throw new RuntimeException("Artigo não encontrado");
+            }
+        } catch (Exception ex){
+            throw new RuntimeException("Erro interno ao criar: " + ex.getMessage());
+        }
+    }
+
+    @Transactional
+    public VideoDTO update(String codigo, VideoDTO dto) {
+        try {
+            Video entity = videoRepository.findById(codigo).orElseThrow(() -> new IllegalArgumentException("Video não encontrado"));
+            mapperDtoToEntity(dto,entity);
+            entity = videoRepository.save(entity);
+            return new VideoDTO(entity, entity.getAutor());
+        } catch (OptimisticLockingFailureException ex){
+            //Trata erro concorrencia
+            //1 - Recupera artigo
+            Video atualizado = videoRepository.findById(codigo).orElse(null);
+            if (atualizado != null){
+                //2- Atualiza campos
+                mapperDtoToEntity(dto,atualizado);
+                //3- Atualiza status de forma incremental
+                atualizado.setVERSION( atualizado.getVERSION() + 1);
+                //4 - Tenta salvar novamente
+                atualizado = videoRepository.save(atualizado);
+                return new VideoDTO(atualizado, atualizado.getAutor());
+            } else {
+                throw new RuntimeException("Artigo não encontrado");
+            }
+        } catch (Exception ex){
+            String mensagem = "Erro interno ao atualizar: " + ex.getMessage();
+            throw new RuntimeException( "Erro interno ao atualizar: " + mensagem);
+        }
+    }
+
+    @Transactional
+    public void delete(String codigo){
+        exibicaoRepository.deleteById(codigo);
+    }
+
+    private void  mapperDtoToEntity(VideoDTO dto, Video entity){
+        entity.setTitulo(dto.getTitulo());
+        entity.setUrl(dto.getUrl());
+        entity.setDataPublicacao(dto.getDataPublicacao());
+        usuarioRepository.findById(dto.getAutor().getCodigo());
+    }
+}
