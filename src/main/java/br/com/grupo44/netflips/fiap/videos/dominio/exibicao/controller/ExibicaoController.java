@@ -1,7 +1,8 @@
-package br.com.grupo44.netflips.fiap.videos.dominio.video.controller;
+package br.com.grupo44.netflips.fiap.videos.dominio.exibicao.controller;
 
+import br.com.grupo44.netflips.fiap.videos.dominio.exibicao.dto.ExibicaoDTO;
+import br.com.grupo44.netflips.fiap.videos.dominio.exibicao.service.ExibicaoService;
 import br.com.grupo44.netflips.fiap.videos.dominio.video.dto.VideoDTO;
-import br.com.grupo44.netflips.fiap.videos.dominio.video.service.VideoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -19,75 +20,76 @@ import java.net.URI;
 import java.util.List;
 
 @RestController
-@RequestMapping(value = "/video",produces = {"application/json"})
-@Tag(name = "API Video")
-public class VideosController {
+@RequestMapping(value = "/exibicao",produces = {"application/json"})
+@Tag(name = "API Exibição")
+public class ExibicaoController {
+
     @Autowired
-    private VideoService videoService;
-    @Operation(summary = "Retorna lista de videos podendo ser filtrada por titulo do videoa e data de publicação",method = "GET")
+    private ExibicaoService exibicaoServic;
+    @Operation(summary = "Retorna lista de exibições paginadas podendo ser paginadas por nome de usuario e titulo de video",method = "GET")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Found the book"),
             @ApiResponse(responseCode = "400", description = "Bad request"),
             @ApiResponse(responseCode = "404", description = "Person not found"),
             @ApiResponse(responseCode = "500", description = "Erro no seervio")})
     @GetMapping
-    public ResponseEntity<Page<VideoDTO>> findAll(
-            @ModelAttribute VideoDTO filtro,
+    public ResponseEntity<Page<ExibicaoDTO>> findAll(
+            @ModelAttribute ExibicaoDTO filtro,
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "10") int size,
-            @RequestParam(name = "sort", required = false, defaultValue = "dataPublicacao") String sort,
+            @RequestParam(name = "sort", required = false, defaultValue = "data_visualizacao") String sort,
             @RequestParam(name = "direction", required = false, defaultValue = "DESC") Sort.Direction direction) {
 
         PageRequest pageRequest = PageRequest.of(page, size, Sort.by(direction, sort));
-        Page<VideoDTO> result = videoService.findAll(filtro, pageRequest);
+        Page<ExibicaoDTO> result = exibicaoServic.findAll(filtro, pageRequest);
         return new ResponseEntity<>(result, HttpStatus.OK);
     }
-    @Operation(summary = "Consulta usuário por id",method = "GET")
+    @Operation(summary = "Consulta exibição por codigo",method = "GET")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Found the book"),
             @ApiResponse(responseCode = "400", description = "Bad request"),
             @ApiResponse(responseCode = "404", description = "Person not found"),
             @ApiResponse(responseCode = "500", description = "Erro no seervio")})
     @GetMapping("/{codigo}")
-    public ResponseEntity<VideoDTO> findById(@PathVariable String codigo) {
-        VideoDTO usuario = videoService.findById(codigo);
-        return ResponseEntity.ok(usuario);
+    public ResponseEntity<ExibicaoDTO> findById(@PathVariable String codigo) {
+        ExibicaoDTO exibicao = exibicaoServic.findById(codigo);
+        return ResponseEntity.ok(exibicao);
     }
 
-    @Operation(summary = "Inserir video",method = "POST")
+    @Operation(summary = "Inserir exibição",method = "POST")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Found the book"),
             @ApiResponse(responseCode = "400", description = "Bad request"),
             @ApiResponse(responseCode = "404", description = "Person not found"),
             @ApiResponse(responseCode = "500", description = "Erro no seervio")})
     @PostMapping
-    public ResponseEntity insert(@RequestBody VideoDTO videoDTO) {
-        List<String> violacoesToList = videoService.validate(videoDTO);
+    public ResponseEntity insert(@RequestBody ExibicaoDTO exibicaoDTO) {
+        List<String> violacoesToList = exibicaoServic.validate(exibicaoDTO);
         if (!violacoesToList.isEmpty()) {
             return ResponseEntity.badRequest().body(violacoesToList);
         }
-        VideoDTO videoSaved = videoService.insert(videoDTO);
-        URI uri = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand((videoSaved.getCodigo())).toUri();
-        return ResponseEntity.created(uri).body(videoSaved);
+        ExibicaoDTO exibicaoSaved = exibicaoServic.insert(exibicaoDTO);
+        URI uri = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand((exibicaoSaved.getCodigo())).toUri();
+        return ResponseEntity.created(uri).body(exibicaoSaved);
     }
 
-    @Operation(summary = "Atualiza video",method = "PUT")
+    @Operation(summary = "Atualiza exibição",method = "PUT")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Found the book"),
             @ApiResponse(responseCode = "400", description = "Bad request"),
             @ApiResponse(responseCode = "404", description = "Person not found"),
             @ApiResponse(responseCode = "500", description = "Erro no seervio")})
     @PutMapping("/{codigo}")
-    public ResponseEntity update(@RequestBody VideoDTO  videoDTO, @PathVariable String codigo) {
-        List<String> violacoesToList = videoService.validate(videoDTO);
+    public ResponseEntity update(@RequestBody ExibicaoDTO  exibicaoDTO, @PathVariable String codigo) {
+        List<String> violacoesToList = exibicaoServic.validate(exibicaoDTO);
         if (!violacoesToList.isEmpty()) {
             return ResponseEntity.badRequest().body(violacoesToList);
         }
-        var alocacaoUpdated = videoService.update(codigo, videoDTO);
+        var alocacaoUpdated = exibicaoServic.update(codigo, exibicaoDTO);
         return  ResponseEntity.ok(alocacaoUpdated);
     }
 
-    @Operation(summary = "Deleta video",method = "DELETE")
+    @Operation(summary = "Deleta exibição",method = "DELETE")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Found the book"),
             @ApiResponse(responseCode = "400", description = "Bad request"),
@@ -95,7 +97,7 @@ public class VideosController {
             @ApiResponse(responseCode = "500", description = "Erro no seervio")})
     @DeleteMapping("/{codigo}")
     public ResponseEntity delete(@PathVariable String codigo) {
-        videoService.delete(codigo);
+        exibicaoServic.delete(codigo);
         return ResponseEntity.noContent().build();
     }
 }

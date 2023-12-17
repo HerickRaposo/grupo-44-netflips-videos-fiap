@@ -24,17 +24,11 @@ public class VideoDTO {
     private String url;
     @NotEmpty(message = "Data publicação deve ser definido")
     private LocalDateTime dataPublicacao;
-    @NotNull(message = "Url não pode ser nula")
-    private UsuarioDTO autor;
 
     public VideoDTO(Video entity){
         this.codigo = entity.getCodigo();
         this.titulo = entity.getTitulo();
         this.url = entity.getUrl();
         this.dataPublicacao = entity.getDataPublicacao();
-    }
-    public VideoDTO(Video entity, Usuario autor){
-        this(entity);
-        this.autor = new UsuarioDTO(autor);
     }
 }

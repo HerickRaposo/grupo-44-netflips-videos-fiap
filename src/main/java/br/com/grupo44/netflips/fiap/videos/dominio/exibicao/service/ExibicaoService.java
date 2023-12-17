@@ -5,12 +5,11 @@ import br.com.grupo44.netflips.fiap.videos.dominio.exibicao.entity.Exibicao;
 import br.com.grupo44.netflips.fiap.videos.dominio.exibicao.repository.ExibicaoRepository;
 import br.com.grupo44.netflips.fiap.videos.dominio.usuario.entities.Usuario;
 import br.com.grupo44.netflips.fiap.videos.dominio.usuario.repository.UsuarioRepository;
-import br.com.grupo44.netflips.fiap.videos.dominio.video.dto.VideoDTO;
-import br.com.grupo44.netflips.fiap.videos.dominio.video.entities.Video;
 import br.com.grupo44.netflips.fiap.videos.dominio.video.repository.VideoRepository;
 import com.mongodb.DuplicateKeyException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
@@ -19,13 +18,16 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Service
 public class ExibicaoService {
     @Autowired
     private ExibicaoRepository exibicaoRepository;
@@ -55,8 +57,8 @@ public class ExibicaoService {
         if (filtro.getUsuario().getCodigo() != null) {
             criteria.and("usuario.codigo").is(filtro.getUsuario().getCodigo());
         }
-        if (!filtro.getVideo().getCodigo() != null) {
-            criteria.and("video.codigo").is(filtro.getVideo().getCodigo())
+        if (filtro.getVideo().getCodigo() != null) {
+            criteria.and("video.codigo").is(filtro.getVideo().getCodigo());
         }
 
         Query query = new Query(criteria);
@@ -81,32 +83,38 @@ public class ExibicaoService {
         return new ExibicaoDTO(exibicao, exibicao.getUsuario(),exibicao.getVideo());
     }
     @Transactional
-    public VideoDTO insert(VideoDTO videoDTO) {
-        Video entity = new Video();
-        mapperDtoToEntity(videoDTO,entity);
-        if (entity.getAutor().getCodigo() != null){
-            Usuario autor = usuarioRepository.findById(entity.getAutor().getCodigo()).orElseThrow(() -> new IllegalArgumentException("\"Codigo autor nao encontrado\""));
-            entity.setAutor(autor);
-        } else{
-            entity.setAutor(null);
+    public ExibicaoDTO insert(ExibicaoDTO dto) {
+        Exibicao entity = new Exibicao();
+        mapperDtoToEntity(dto,entity);
+        if (entity.getUsuario().getCodigo() != null){
+            Usuario usuario = usuarioRepository.findById(entity.getUsuario().getCodigo()).orElseThrow(() -> new IllegalArgumentException("Codigo autor nao encontrado"));
+            usuario.getHistoricoExibicao().add(entity);
+            usuario = usuarioRepository.save(usuario);
+            entity.setUsuario(usuario);
         }
         try {
-            Video videoSalvo = videoRepository.save(entity);
-            return new VideoDTO(videoSalvo, videoSalvo.getAutor());
+            Exibicao exibicaoSalva = exibicaoRepository.save(entity);
+            return new ExibicaoDTO(exibicaoSalva, exibicaoSalva.getUsuario(),exibicaoSalva.getVideo());
         } catch (DuplicateKeyException e){
             throw new RuntimeException("Artigo ja existe na coleção");
         } catch (OptimisticLockingFailureException ex){
             //Trata erro concorrencia
             //1 - Recupera artigo
-            Video atualizado = videoRepository.findById(videoDTO.getCodigo()).orElse(null);
+            Exibicao atualizado = exibicaoRepository.findById(dto.getCodigo()).orElse(null);
             if (atualizado != null){
                 //2- Atualiza campos
-                mapperDtoToEntity(videoDTO,atualizado);
+                mapperDtoToEntity(dto,atualizado);
                 //3- Atualiza status de forma incremental
                 atualizado.setVERSION( atualizado.getVERSION() + 1);
                 //4 - Tenta salvar novamente
-                atualizado = videoRepository.save(atualizado);
-                return new VideoDTO(atualizado, atualizado.getAutor());
+                if (entity.getUsuario().getCodigo() != null){
+                    Usuario usuario = usuarioRepository.findById(entity.getUsuario().getCodigo()).orElseThrow(() -> new IllegalArgumentException("Codigo autor nao encontrado"));
+                    usuario.getHistoricoExibicao().add(entity);
+                    usuario = usuarioRepository.save(usuario);
+                    entity.setUsuario(usuario);
+                }
+                atualizado = exibicaoRepository.save(atualizado);
+                return new ExibicaoDTO(atualizado, atualizado.getUsuario(),atualizado.getVideo());
             } else {
                 throw new RuntimeException("Artigo não encontrado");
             }
@@ -116,24 +124,46 @@ public class ExibicaoService {
     }
 
     @Transactional
-    public VideoDTO update(String codigo, VideoDTO dto) {
+    public ExibicaoDTO update(String codigo, ExibicaoDTO dto) {
         try {
-            Video entity = videoRepository.findById(codigo).orElseThrow(() -> new IllegalArgumentException("Video não encontrado"));
+            Exibicao entity = exibicaoRepository.findById(codigo).orElseThrow(() -> new IllegalArgumentException("Video não encontrado"));
             mapperDtoToEntity(dto,entity);
-            entity = videoRepository.save(entity);
-            return new VideoDTO(entity, entity.getAutor());
+            entity = exibicaoRepository.save(entity);
+
+            //Realiza alteração nos dados da lista de exibição do usuario
+            if (entity.getUsuario()!= null){
+                Usuario usuario = usuarioRepository.findById(entity.getUsuario().getCodigo()).orElseThrow(() -> new IllegalArgumentException("Usuario não encontrado"));
+                for (Exibicao exibicaoUsuario : usuario.getHistoricoExibicao()){
+                    if (exibicaoUsuario.getCodigo().equals(entity.getCodigo())){
+                        BeanUtils.copyProperties(entity, exibicaoUsuario);
+                    }
+                }
+                usuarioRepository.save(usuario);
+            }
+            return new ExibicaoDTO(entity,entity.getUsuario(),entity.getVideo());
+
         } catch (OptimisticLockingFailureException ex){
             //Trata erro concorrencia
             //1 - Recupera artigo
-            Video atualizado = videoRepository.findById(codigo).orElse(null);
+            Exibicao atualizado = exibicaoRepository.findById(codigo).orElseThrow(() -> new IllegalArgumentException("Exibição não encontrada"));
             if (atualizado != null){
                 //2- Atualiza campos
                 mapperDtoToEntity(dto,atualizado);
                 //3- Atualiza status de forma incremental
                 atualizado.setVERSION( atualizado.getVERSION() + 1);
                 //4 - Tenta salvar novamente
-                atualizado = videoRepository.save(atualizado);
-                return new VideoDTO(atualizado, atualizado.getAutor());
+                atualizado = exibicaoRepository.save(atualizado);
+                if (atualizado.getUsuario()!= null){
+                    Usuario usuario = usuarioRepository.findById(atualizado.getUsuario().getCodigo()).orElseThrow(() -> new IllegalArgumentException("Usuario não encontrado"));
+
+                    for (Exibicao exibicaoUsuario : usuario.getHistoricoExibicao()){
+                        if (exibicaoUsuario.getCodigo().equals(atualizado.getCodigo())){
+                            BeanUtils.copyProperties(atualizado, exibicaoUsuario);
+                        }
+                    }
+                    usuarioRepository.save(usuario);
+                }
+                return new ExibicaoDTO(atualizado, atualizado.getUsuario(),atualizado.getVideo());
             } else {
                 throw new RuntimeException("Artigo não encontrado");
             }
@@ -145,13 +175,24 @@ public class ExibicaoService {
 
     @Transactional
     public void delete(String codigo){
+        Exibicao exibicao = exibicaoRepository.findById(codigo).orElseThrow(()-> new IllegalArgumentException("Exibicao não encontrada"));
+        Usuario usuario = usuarioRepository.findById(exibicao.getUsuario().getCodigo()).orElseThrow(()-> new IllegalArgumentException("Usuario não encontrado"));
+        if (usuario.getHistoricoExibicao()!= null && !usuario.getHistoricoExibicao().isEmpty()){
+            Optional<Exibicao> first = usuario.getHistoricoExibicao().stream().filter(exibicaoUsuario -> exibicaoUsuario.getCodigo().equals(codigo)).findFirst();
+            if (first.isPresent()){
+                usuario.getHistoricoExibicao().remove(first.get());
+            }
+        }
         exibicaoRepository.deleteById(codigo);
+
     }
 
-    private void  mapperDtoToEntity(VideoDTO dto, Video entity){
-        entity.setTitulo(dto.getTitulo());
-        entity.setUrl(dto.getUrl());
-        entity.setDataPublicacao(dto.getDataPublicacao());
-        usuarioRepository.findById(dto.getAutor().getCodigo());
+        private void  mapperDtoToEntity(ExibicaoDTO dto, Exibicao entity){
+        entity.setDataVisualizacao(dto.getDataVisualizacao());
+        entity.setPontuacao(dto.getPontuacao());
+        entity.setDataVisualizacao(dto.getDataVisualizacao());
+        entity.setRecomenda(dto.getRecomenda());
+        entity.setUsuario(usuarioRepository.findById(dto.getUsuario().getCodigo()).orElse(null));
+        entity.setVideo(videoRepository.findById(dto.getVideo().getCodigo()).orElse(null));
     }
 }

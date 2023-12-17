@@ -64,7 +64,7 @@ public class VideoService {
         if (listaVideos != null && !listaVideos.isEmpty()) {
             List<VideoDTO> listaVideosDTO = new ArrayList<>();
             for (Video video : listaVideos) {
-                listaVideosDTO.add(new VideoDTO(video, video.getAutor()));
+                listaVideosDTO.add(new VideoDTO(video));
             }
             return new PageImpl<>(listaVideosDTO, page, listaVideos.size());
         }
@@ -75,7 +75,7 @@ public class VideoService {
 
     public VideoDTO findById(String codigo) {
         var video = videoRepository.findById(codigo).orElseThrow(() -> new IllegalArgumentException("Video não encontrada"));
-        return new VideoDTO(video,video.getAutor());
+        return new VideoDTO(video);
     }
      @Transactional
     public VideoDTO insert(VideoDTO videoDTO) {
@@ -89,7 +89,7 @@ public class VideoService {
         }
        try {
            Video videoSalvo = videoRepository.save(entity);
-           return new VideoDTO(videoSalvo, videoSalvo.getAutor());
+           return new VideoDTO(videoSalvo);
        } catch (DuplicateKeyException e){
            throw new RuntimeException("Artigo ja existe na coleção");
        } catch (OptimisticLockingFailureException ex){
@@ -103,7 +103,7 @@ public class VideoService {
                atualizado.setVERSION( atualizado.getVERSION() + 1);
                //4 - Tenta salvar novamente
                atualizado = videoRepository.save(atualizado);
-               return new VideoDTO(atualizado, atualizado.getAutor());
+               return new VideoDTO(atualizado);
            } else {
                throw new RuntimeException("Artigo não encontrado");
            }
@@ -118,7 +118,7 @@ public class VideoService {
             Video entity = videoRepository.findById(codigo).orElseThrow(() -> new IllegalArgumentException("Video não encontrado"));
             mapperDtoToEntity(dto,entity);
             entity = videoRepository.save(entity);
-            return new VideoDTO(entity, entity.getAutor());
+            return new VideoDTO(entity);
         } catch (OptimisticLockingFailureException ex){
             //Trata erro concorrencia
             //1 - Recupera artigo
@@ -130,7 +130,7 @@ public class VideoService {
                 atualizado.setVERSION( atualizado.getVERSION() + 1);
                 //4 - Tenta salvar novamente
                 atualizado = videoRepository.save(atualizado);
-                return new VideoDTO(atualizado, atualizado.getAutor());
+                return new VideoDTO(atualizado);
             } else {
                 throw new RuntimeException("Artigo não encontrado");
             }
@@ -149,6 +149,5 @@ public class VideoService {
          entity.setTitulo(dto.getTitulo());
          entity.setUrl(dto.getUrl());
          entity.setDataPublicacao(dto.getDataPublicacao());
-        usuarioRepository.findById(dto.getAutor().getCodigo());
     }
 }
