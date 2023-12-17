@@ -47,7 +47,7 @@ public class UsuarioService {
             filtro.setNome(nome);
         }
         if (login != null && !login.isBlank()){
-            filtro.setLogin(login);
+            filtro.setEmail(login);
         }
         return filtro;
     }
@@ -56,8 +56,8 @@ public class UsuarioService {
         if (filtro.getNome() != null && !filtro.getNome().isBlank()) {
             criteria.and("nome").regex(filtro.getNome(), "i");
         }
-        if (filtro.getLogin() != null && !filtro.getLogin().isBlank()) {
-            criteria.and("login").regex(filtro.getLogin(), "i");
+        if (filtro.getEmail() != null && !filtro.getEmail().isBlank()) {
+            criteria.and("login").regex(filtro.getEmail(), "i");
         }
         Query query = new Query(criteria);
         List<Usuario> listaUsuarios = mongoTemplate.find(query, Usuario.class);
@@ -108,12 +108,14 @@ public class UsuarioService {
         try {
             Usuario entity = usuarioRepository.findById(codigo).orElseThrow(() -> new IllegalArgumentException("Video não encontrado"));
             BeanUtils.copyProperties(dto, entity);
+            entity.setCodigo(codigo);
             entity = usuarioRepository.save(entity);
             return new UsuarioDTO(entity);
         } catch (OptimisticLockingFailureException ex) {
             Usuario atualizado = usuarioRepository.findById(codigo).orElse(null);
             if (atualizado != null) {
                 BeanUtils.copyProperties(dto, atualizado);
+                atualizado.setCodigo(codigo);
                 atualizado.setVERSION(atualizado.getVERSION() + 1);
                 atualizado = usuarioRepository.save(atualizado);
                 return new UsuarioDTO(atualizado);

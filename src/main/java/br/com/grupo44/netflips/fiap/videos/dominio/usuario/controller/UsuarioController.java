@@ -48,7 +48,7 @@ public class UsuarioController {
             @ApiResponse(responseCode = "400", description = "Bad request"),
             @ApiResponse(responseCode = "404", description = "Person not found"),
             @ApiResponse(responseCode = "500", description = "Erro no seervio")})
-    @GetMapping("/{id}")
+    @GetMapping("/{codigo}")
     public ResponseEntity<UsuarioDTO> findById(@PathVariable String codigo) {
         UsuarioDTO usuario = usuarioService.findById(codigo);
         return ResponseEntity.ok(usuario);
@@ -77,7 +77,7 @@ public class UsuarioController {
             @ApiResponse(responseCode = "400", description = "Bad request"),
             @ApiResponse(responseCode = "404", description = "Person not found"),
             @ApiResponse(responseCode = "500", description = "Erro no seervio")})
-    @PutMapping("/{id}")
+    @PutMapping("/{codigo}")
     public ResponseEntity update(@RequestBody UsuarioDTO usuarioDTO, @PathVariable String codigo) {
         List<String> violacoesToList = usuarioService.validate(usuarioDTO);
         if (!violacoesToList.isEmpty()) {
@@ -93,7 +93,7 @@ public class UsuarioController {
             @ApiResponse(responseCode = "400", description = "Bad request"),
             @ApiResponse(responseCode = "404", description = "Person not found"),
             @ApiResponse(responseCode = "500", description = "Erro no seervio")})
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{codigo}")
     public ResponseEntity delete(@PathVariable String codigo) {
         usuarioService.delete(codigo);
         return ResponseEntity.noContent().build();
