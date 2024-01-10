@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.validator.constraints.br.CPF;
@@ -20,6 +21,7 @@ import java.util.List;
 
 @Document
 @Data
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class UsuarioDTO {

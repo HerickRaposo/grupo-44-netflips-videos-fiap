@@ -30,7 +30,9 @@ public class UsuarioService {
 
     private final MongoTemplate mongoTemplate;
 
-    public UsuarioService(MongoTemplate mongoTemplate) {
+
+    public UsuarioService(UsuarioRepository usuarioRepository, MongoTemplate mongoTemplate){
+        this.usuarioRepository = usuarioRepository;
         this.mongoTemplate = mongoTemplate;
     }
 
