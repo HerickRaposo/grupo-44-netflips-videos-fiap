@@ -14,24 +14,27 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.net.URI;
 import java.util.List;
 
 @RestController
-@RequestMapping(value = "/video",produces = {"application/json"})
+@RequestMapping(value = "/video", produces = {"application/json"})
 @Tag(name = "API Video")
 public class VideosController {
     @Autowired
     private VideoService videoService;
-    @Operation(summary = "Retorna lista de videos podendo ser filtrada por titulo do videoa e data de publicação",method = "GET")
+
+    @Operation(summary = "Retorna lista de vídeos podendo ser filtrada por título do vídeo e data de publicação", method = "GET")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Found the book"),
+            @ApiResponse(responseCode = "200", description = "Found videos"),
             @ApiResponse(responseCode = "400", description = "Bad request"),
             @ApiResponse(responseCode = "404", description = "Person not found"),
-            @ApiResponse(responseCode = "500", description = "Erro no seervio")})
+            @ApiResponse(responseCode = "500", description = "Error in the service")})
     @GetMapping
-    public ResponseEntity<Page<VideoDTO>> findAll(
+    public Flux<ResponseEntity<Page<VideoDTO>>> findAll(
             @ModelAttribute VideoDTO filtro,
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "10") int size,
@@ -39,55 +42,57 @@ public class VideosController {
             @RequestParam(name = "direction", required = false, defaultValue = "DESC") Sort.Direction direction) {
 
         PageRequest pageRequest = PageRequest.of(page, size, Sort.by(direction, sort));
-        Page<VideoDTO> result = videoService.findAll(filtro, pageRequest);
-        return new ResponseEntity<>(result, HttpStatus.OK);
+        return videoService.findAll(filtro, pageRequest)
+                .map(result -> new ResponseEntity<>(result, HttpStatus.OK));
     }
-    @Operation(summary = "Consulta usuário por id",method = "GET")
+    @Operation(summary = "Consulta vídeo por id", method = "GET")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Found the book"),
-            @ApiResponse(responseCode = "400", description = "Bad request"),
-            @ApiResponse(responseCode = "404", description = "Person not found"),
-            @ApiResponse(responseCode = "500", description = "Erro no seervio")})
+            @ApiResponse(responseCode = "200", description = "Found the video"),
+            @ApiResponse(responseCode = "404", description = "Video not found"),
+            @ApiResponse(responseCode = "500", description = "Error in the service")})
     @GetMapping("/{codigo}")
-    public ResponseEntity<VideoDTO> findById(@PathVariable String codigo) {
-        VideoDTO usuario = videoService.findById(codigo);
-        return ResponseEntity.ok(usuario);
+    public Mono<ResponseEntity<VideoDTO>> findById(@PathVariable String codigo) {
+        return videoService.findById(codigo)
+                .map(video -> ResponseEntity.ok(video))
+                .defaultIfEmpty(ResponseEntity.notFound().build());
     }
-
-    @Operation(summary = "Inserir video",method = "POST")
+    @Operation(summary = "Inserir video", method = "POST")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Found the book"),
             @ApiResponse(responseCode = "400", description = "Bad request"),
             @ApiResponse(responseCode = "404", description = "Person not found"),
             @ApiResponse(responseCode = "500", description = "Erro no seervio")})
-    @PostMapping
-    public ResponseEntity insert(@RequestBody VideoDTO videoDTO) {
+    @PostMapping("/videos")
+    public Mono<ResponseEntity<?>> insertVideo(@RequestBody VideoDTO videoDTO) {
         List<String> violacoesToList = videoService.validate(videoDTO);
         if (!violacoesToList.isEmpty()) {
-            return ResponseEntity.badRequest().body(violacoesToList);
+            return Mono.just(ResponseEntity.badRequest().body(violacoesToList));
         }
-        VideoDTO videoSaved = videoService.insert(videoDTO);
-        URI uri = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand((videoSaved.getCodigo())).toUri();
-        return ResponseEntity.created(uri).body(videoSaved);
+
+        return videoService.insert(videoDTO)
+                .map(videoSaved -> ResponseEntity.created(
+                                ServletUriComponentsBuilder.fromCurrentRequest().path("/{codigo}")
+                                        .buildAndExpand(videoSaved.getCodigo()).toUri())
+                        .body(videoSaved));
     }
 
-    @Operation(summary = "Atualiza video",method = "PUT")
+
+    @Operation(summary = "Atualiza video", method = "PUT")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Found the book"),
             @ApiResponse(responseCode = "400", description = "Bad request"),
             @ApiResponse(responseCode = "404", description = "Person not found"),
             @ApiResponse(responseCode = "500", description = "Erro no seervio")})
     @PutMapping("/{codigo}")
-    public ResponseEntity update(@RequestBody VideoDTO  videoDTO, @PathVariable String codigo) {
-        List<String> violacoesToList = videoService.validate(videoDTO);
-        if (!violacoesToList.isEmpty()) {
-            return ResponseEntity.badRequest().body(violacoesToList);
-        }
-        var alocacaoUpdated = videoService.update(codigo, videoDTO);
-        return  ResponseEntity.ok(alocacaoUpdated);
+    public Mono<ResponseEntity<VideoDTO>> update(@RequestBody VideoDTO videoDTO, @PathVariable String codigo) {
+        return Mono.just(videoService.validate(videoDTO))
+                .filter(List::isEmpty)
+                .flatMap(valid -> videoService.update(codigo, videoDTO))
+                .map(videoSaved -> ResponseEntity.ok(videoSaved))
+                .defaultIfEmpty(ResponseEntity.badRequest().build());
     }
 
-    @Operation(summary = "Deleta video",method = "DELETE")
+    @Operation(summary = "Deleta video", method = "DELETE")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Found the book"),
             @ApiResponse(responseCode = "400", description = "Bad request"),

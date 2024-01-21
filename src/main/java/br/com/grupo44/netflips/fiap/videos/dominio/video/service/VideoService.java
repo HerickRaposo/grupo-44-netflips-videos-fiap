@@ -1,6 +1,5 @@
 package br.com.grupo44.netflips.fiap.videos.dominio.video.service;
 
-import br.com.grupo44.netflips.fiap.videos.dominio.usuario.entities.Usuario;
 import br.com.grupo44.netflips.fiap.videos.dominio.usuario.repository.UsuarioRepository;
 import br.com.grupo44.netflips.fiap.videos.dominio.video.dto.VideoDTO;
 import br.com.grupo44.netflips.fiap.videos.dominio.video.entities.Video;
@@ -13,14 +12,16 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -33,10 +34,14 @@ public class VideoService {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
-    private final MongoTemplate mongoTemplate;
+    @Autowired
+    private final ReactiveMongoTemplate reactiveMongoTemplate;
 
-    public VideoService(MongoTemplate mongoTemplate) {
-        this.mongoTemplate = mongoTemplate;
+
+
+    public VideoService(VideoRepository videoRepository, ReactiveMongoTemplate reactiveMongoTemplate) {
+        this.videoRepository = videoRepository;
+        this.reactiveMongoTemplate = reactiveMongoTemplate;
     }
 
     public List<String> validate(VideoDTO dto){
@@ -46,7 +51,7 @@ public class VideoService {
                 .collect(Collectors.toList());
         return violacoesToList;
     }
-    public Page<VideoDTO> findAll(VideoDTO filtro, PageRequest page) {
+    public Flux<Page<VideoDTO>> findAll(VideoDTO filtro, PageRequest page) {
         Criteria criteria = new Criteria();
 
         if (filtro.getDataPublicacao() != null) {
@@ -56,95 +61,84 @@ public class VideoService {
             criteria.and("titulo").regex(filtro.getTitulo(), "i");
         }
 
-        Query query = new Query(criteria);
-        query.with(page);
+        Query query = new Query(criteria).with(page);
 
-        List<Video> listaVideos = mongoTemplate.find(query, Video.class);
-
-        if (listaVideos != null && !listaVideos.isEmpty()) {
-            List<VideoDTO> listaVideosDTO = new ArrayList<>();
-            for (Video video : listaVideos) {
-                listaVideosDTO.add(new VideoDTO(video));
-            }
-            return new PageImpl<>(listaVideosDTO, page, listaVideos.size());
-        }
-
-        return Page.empty();
+        return reactiveMongoTemplate.find(query.with(page), Video.class)
+                .collectList()
+                .map(listaVideos -> new PageImpl<>(listaVideos, page, listaVideos.size()))
+                .flux()
+                .map(pageResult -> pageResult.map(VideoDTO::new));
+    }
+    public Mono<VideoDTO> findById(String codigo) {
+        return videoRepository.findById(codigo)
+                .map(VideoDTO::new)
+                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Video não encontrado")));
     }
 
-
-    public VideoDTO findById(String codigo) {
-        var video = videoRepository.findById(codigo).orElseThrow(() -> new IllegalArgumentException("Video não encontrada"));
-        return new VideoDTO(video);
-    }
      @Transactional
-    public VideoDTO insert(VideoDTO videoDTO) {
+     public Mono<VideoDTO> insert(VideoDTO videoDTO) {
          Video entity = new Video();
-         mapperDtoToEntity(videoDTO,entity);
-        if (entity.getAutor().getCodigo() != null){
-            Usuario autor = usuarioRepository.findById(entity.getAutor().getCodigo()).orElseThrow(() -> new IllegalArgumentException("\"Codigo autor nao encontrado\""));
-            entity.setAutor(autor);
-        } else{
-            entity.setAutor(null);
-        }
-       try {
-           Video videoSalvo = videoRepository.save(entity);
-           return new VideoDTO(videoSalvo);
-       } catch (DuplicateKeyException e){
-           throw new RuntimeException("Artigo ja existe na coleção");
-       } catch (OptimisticLockingFailureException ex){
-           //Trata erro concorrencia
-           //1 - Recupera artigo
-           Video atualizado = videoRepository.findById(videoDTO.getCodigo()).orElse(null);
-           if (atualizado != null){
-               //2- Atualiza campos
-               mapperDtoToEntity(videoDTO,atualizado);
-               //3- Atualiza status de forma incremental
-               atualizado.setVERSION( atualizado.getVERSION() + 1);
-               //4 - Tenta salvar novamente
-               atualizado = videoRepository.save(atualizado);
-               return new VideoDTO(atualizado);
-           } else {
-               throw new RuntimeException("Artigo não encontrado");
-           }
-       } catch (Exception ex){
-           throw new RuntimeException("Erro interno ao criar: " + ex.getMessage());
-       }
+         mapperDtoToEntity(videoDTO, entity);
+
+         return Mono.justOrEmpty(entity.getAutor().getCodigo())
+                 .flatMap(codigo -> usuarioRepository.findById(codigo)
+                         .map(autor -> {
+                             entity.setAutor(autor);
+                             return entity;
+                         })
+                         .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Author not found"))))
+                 .switchIfEmpty(Mono.defer(() -> {
+                     entity.setAutor(null);
+                     return Mono.just(entity);
+                 }))
+                 .flatMap(videoRepository::save)
+                 .map(videoSalvo -> new VideoDTO(videoSalvo))
+                 .onErrorResume(DuplicateKeyException.class, ex ->
+                         Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Video already exists")))
+                 .onErrorResume(OptimisticLockingFailureException.class, ex ->
+                         videoRepository.findById(videoDTO.getCodigo())
+                                 .flatMap(atualizado -> {
+                                     mapperDtoToEntity(videoDTO, atualizado);
+                                     atualizado.setVERSION(atualizado.getVERSION() + 1);
+                                     return videoRepository.save(atualizado);
+                                 })
+                                 .map(atualizado -> new VideoDTO(atualizado))
+                                 .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Video not found"))))
+                 .onErrorResume(Exception.class, ex ->
+                         Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error: " + ex.getMessage())));
+     }
+
+    @Transactional
+    public Mono<VideoDTO> update(String codigo, VideoDTO dto) {
+        return Mono.just(codigo)
+                .flatMap(codigoVideo -> videoRepository.findById(codigoVideo)
+                        .map(entity -> {
+                            mapperDtoToEntity(dto, entity);
+                            return entity;
+                        })
+                        .switchIfEmpty(Mono.defer(() -> Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Video not found")))))
+                .flatMap(videoRepository::save)
+                .map(savedEntity -> new VideoDTO(savedEntity))
+                .onErrorResume(OptimisticLockingFailureException.class, ex ->
+                        videoRepository.findById(codigo)
+                                .flatMap(atualizado -> {
+                                    mapperDtoToEntity(dto, atualizado);
+                                    atualizado.setVERSION(atualizado.getVERSION() + 1);
+                                    return videoRepository.save(atualizado)
+                                            .map(salvo -> new VideoDTO(salvo));
+                                })
+                                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Video não encontrado"))))
+                .onErrorResume(Exception.class, ex ->
+                        Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erro interno do servidor: " + ex.getMessage())));
     }
 
     @Transactional
-    public VideoDTO update(String codigo, VideoDTO dto) {
-        try {
-            Video entity = videoRepository.findById(codigo).orElseThrow(() -> new IllegalArgumentException("Video não encontrado"));
-            mapperDtoToEntity(dto,entity);
-            entity = videoRepository.save(entity);
-            return new VideoDTO(entity);
-        } catch (OptimisticLockingFailureException ex){
-            //Trata erro concorrencia
-            //1 - Recupera artigo
-            Video atualizado = videoRepository.findById(codigo).orElse(null);
-            if (atualizado != null){
-                //2- Atualiza campos
-                mapperDtoToEntity(dto,atualizado);
-                //3- Atualiza status de forma incremental
-                atualizado.setVERSION( atualizado.getVERSION() + 1);
-                //4 - Tenta salvar novamente
-                atualizado = videoRepository.save(atualizado);
-                return new VideoDTO(atualizado);
-            } else {
-                throw new RuntimeException("Artigo não encontrado");
-            }
-        } catch (Exception ex){
-            String mensagem = "Erro interno ao atualizar: " + ex.getMessage();
-            throw new RuntimeException( "Erro interno ao atualizar: " + mensagem);
-        }
+    public Mono<Void> delete(String codigo) {
+        return Mono.fromRunnable(() ->
+                videoRepository.deleteById(codigo)
+                        .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Video não encontrado")))
+        );
     }
-
-    @Transactional
-    public void delete(String codigo){
-        videoRepository.deleteById(codigo);
-    }
-
     private void  mapperDtoToEntity(VideoDTO dto, Video entity){
          entity.setTitulo(dto.getTitulo());
          entity.setUrl(dto.getUrl());

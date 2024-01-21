@@ -12,13 +12,16 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -28,12 +31,13 @@ public class UsuarioService {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
-    private final MongoTemplate mongoTemplate;
+
+    private final ReactiveMongoTemplate reactiveMongoTemplate;
 
 
-    public UsuarioService(UsuarioRepository usuarioRepository, MongoTemplate mongoTemplate){
+    public UsuarioService(UsuarioRepository usuarioRepository, ReactiveMongoTemplate reactiveMongoTemplate){
         this.usuarioRepository = usuarioRepository;
-        this.mongoTemplate = mongoTemplate;
+        this.reactiveMongoTemplate = reactiveMongoTemplate;
     }
 
     public List<String> validate(UsuarioDTO dto){
@@ -43,94 +47,76 @@ public class UsuarioService {
                 .collect(Collectors.toList());
         return violacoesToList;
     }
-    public UsuarioDTO retornaFiltroFormatado(String nome, String login){
-        UsuarioDTO filtro= new UsuarioDTO();
-        if (nome != null && !nome.isBlank()){
-            filtro.setNome(nome);
-        }
-        if (login != null && !login.isBlank()){
-            filtro.setEmail(login);
-        }
-        return filtro;
-    }
-    public Page<UsuarioDTO> findAll(UsuarioDTO filtro, PageRequest page) {
+
+    public Flux<Page<UsuarioDTO>> findAll(UsuarioDTO filtro, PageRequest page) {
         Criteria criteria = new Criteria();
+
         if (filtro.getNome() != null && !filtro.getNome().isBlank()) {
             criteria.and("nome").regex(filtro.getNome(), "i");
         }
+
         if (filtro.getEmail() != null && !filtro.getEmail().isBlank()) {
             criteria.and("login").regex(filtro.getEmail(), "i");
         }
+
         Query query = new Query(criteria);
-        List<Usuario> listaUsuarios = mongoTemplate.find(query, Usuario.class);
-        if (listaUsuarios != null && !listaUsuarios.isEmpty()) {
-            List<UsuarioDTO> listaUsuariosDTO = new ArrayList<>();
-            for (Usuario usuario : listaUsuarios) {
-                listaUsuariosDTO.add(new UsuarioDTO(usuario));
-            }
-            return new PageImpl<>(listaUsuariosDTO, page, listaUsuarios.size());
-        }
 
-        return Page.empty();
+        return reactiveMongoTemplate.find(query.with(page), Usuario.class)
+                .collectList()
+                .map(listaUsuarios -> new PageImpl<>(listaUsuarios, page, listaUsuarios.size()))
+                .flux()
+                .map(pageResult -> pageResult.map(UsuarioDTO::new));
     }
 
-    public UsuarioDTO findById(String codigo) {
-        var usuario = usuarioRepository.findById(codigo).orElseThrow(() -> new IllegalArgumentException("Usuario não encontrada"));
-        return new UsuarioDTO(usuario);
+    public Mono<UsuarioDTO> findById(String codigo) {
+        return usuarioRepository.findById(codigo)
+                .map(UsuarioDTO::new)
+                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario não encontrado")));
     }
+
 
     @Transactional
-    public UsuarioDTO insert(UsuarioDTO usuarioDTO) {
+    public Mono<UsuarioDTO> insert(UsuarioDTO usuarioDTO) {
         Usuario entity = new Usuario();
         BeanUtils.copyProperties(usuarioDTO, entity);
 
-        try {
-            Usuario usuarioSalvo = usuarioRepository.save(entity);
-            return new UsuarioDTO(usuarioSalvo);
-        } catch (DuplicateKeyException e) {
-            throw new RuntimeException("Usuário já cadastrado: " + e.getMessage());
-        } catch (OptimisticLockingFailureException ex) {
-            Usuario atualizado = usuarioRepository.findById(usuarioDTO.getCodigo()).orElse(null);
-
-            if (atualizado != null) {
-                BeanUtils.copyProperties(usuarioDTO, atualizado);
-                atualizado = usuarioRepository.save(atualizado);
-                return new UsuarioDTO(atualizado);
-            } else {
-                throw new RuntimeException("Usuário não encontrado");
-            }
-        } catch (Exception ex) {
-            throw new RuntimeException("Erro interno ao criar: " + ex.getMessage());
-        }
+        return usuarioRepository.save(entity)
+                .map(savedEntity -> new UsuarioDTO(savedEntity))
+                .onErrorResume(DuplicateKeyException.class, ex ->
+                        Mono.error(new IllegalArgumentException("Usuário já cadastrado: " + ex.getMessage())))
+                .onErrorResume(OptimisticLockingFailureException.class, ex ->
+                        usuarioRepository.findById(usuarioDTO.getCodigo())
+                                .flatMap(updatedEntity -> {
+                                    BeanUtils.copyProperties(usuarioDTO, updatedEntity);
+                                    return usuarioRepository.save(updatedEntity)
+                                            .map(entity1 -> new UsuarioDTO(entity1));
+                                })
+                                .switchIfEmpty(Mono.error(new IllegalArgumentException("Usuário não encontrado"))))
+                .onErrorResume(Exception.class, ex ->
+                        Mono.error(new RuntimeException("Erro interno ao criar: " + ex.getMessage())));
     }
 
 
     @Transactional
-    public UsuarioDTO update(String codigo, UsuarioDTO dto) {
-        try {
-            Usuario entity = usuarioRepository.findById(codigo).orElseThrow(() -> new IllegalArgumentException("Video não encontrado"));
-            BeanUtils.copyProperties(dto, entity);
-            entity.setCodigo(codigo);
-            entity = usuarioRepository.save(entity);
-            return new UsuarioDTO(entity);
-        } catch (OptimisticLockingFailureException ex) {
-            Usuario atualizado = usuarioRepository.findById(codigo).orElse(null);
-            if (atualizado != null) {
-                BeanUtils.copyProperties(dto, atualizado);
-                atualizado.setCodigo(codigo);
-                atualizado.setVERSION(atualizado.getVERSION() + 1);
-                atualizado = usuarioRepository.save(atualizado);
-                return new UsuarioDTO(atualizado);
-            } else {
-                throw new RuntimeException("Artigo não encontrado");
-            }
-        } catch (Exception ex) {
-            throw new RuntimeException("Erro interno ao Atualizar: " + ex.getMessage());
-        }
+    public Mono<UsuarioDTO> update(String codigo, UsuarioDTO usuarioDTO) {
+        Usuario entity = new Usuario();
+        BeanUtils.copyProperties(usuarioDTO, entity);
+
+        return usuarioRepository.save(entity)
+                .map(updatedEntity -> new UsuarioDTO(updatedEntity))
+                .onErrorResume(DuplicateKeyException.class, ex ->
+                        Mono.error(new RuntimeException("Usuário já cadastrado: " + ex.getMessage())))
+                .onErrorResume(OptimisticLockingFailureException.class, ex ->
+                        Mono.error(new RuntimeException("Erro de concorrência ao atualizar o usuário")))
+                .onErrorResume(Exception.class, ex ->
+                        Mono.error(new RuntimeException("Erro interno ao atualizar: " + ex.getMessage())));
     }
 
     @Transactional
-    public void delete(String codigo) {
-        usuarioRepository.deleteById(codigo);
+    public Mono<Void> delete(String codigo) {
+        return Mono.fromRunnable(() ->
+                usuarioRepository.deleteById(codigo)
+                        .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario não encontrado")))
+        );
     }
 }

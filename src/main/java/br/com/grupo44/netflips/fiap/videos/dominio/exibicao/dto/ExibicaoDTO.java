@@ -7,16 +7,14 @@ import br.com.grupo44.netflips.fiap.videos.dominio.video.dto.VideoDTO;
 import br.com.grupo44.netflips.fiap.videos.dominio.video.entities.Video;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Null;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import javax.swing.text.html.parser.Entity;
 import java.time.LocalDateTime;
 
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class ExibicaoDTO {

@@ -1,7 +1,7 @@
 package br.com.grupo44.netflips.fiap.videos.dominio.exibicao.repository;
 
 import br.com.grupo44.netflips.fiap.videos.dominio.exibicao.entity.Exibicao;
-import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
 
-public interface ExibicaoRepository extends MongoRepository<Exibicao,String> {
+public interface ExibicaoRepository extends ReactiveMongoRepository<Exibicao,String> {
 }

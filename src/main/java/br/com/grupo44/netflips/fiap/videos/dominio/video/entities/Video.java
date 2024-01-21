@@ -1,10 +1,7 @@
 package br.com.grupo44.netflips.fiap.videos.dominio.video.entities;
 
 import br.com.grupo44.netflips.fiap.videos.dominio.usuario.entities.Usuario;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.mapping.DBRef;
@@ -15,6 +12,7 @@ import java.time.LocalDateTime;
 @Document
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Video {

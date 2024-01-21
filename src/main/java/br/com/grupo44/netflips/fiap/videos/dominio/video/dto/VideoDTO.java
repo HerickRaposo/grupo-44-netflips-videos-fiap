@@ -5,15 +5,13 @@ import br.com.grupo44.netflips.fiap.videos.dominio.usuario.entities.Usuario;
 import br.com.grupo44.netflips.fiap.videos.dominio.video.entities.Video;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Getter
 @Setter
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class VideoDTO {
