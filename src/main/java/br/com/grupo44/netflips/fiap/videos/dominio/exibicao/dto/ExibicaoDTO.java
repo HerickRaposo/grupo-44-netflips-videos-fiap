@@ -9,7 +9,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Null;
 import lombok.*;
 
-import javax.swing.text.html.parser.Entity;
 import java.time.LocalDateTime;
 
 @Getter
@@ -28,9 +27,10 @@ public class ExibicaoDTO {
     private Boolean visualizado;
     @NotNull(message = "Recomenda não pode ser nulo")
     private Boolean recomenda;
-    @NotNull(message = "Usuario não pode ser nulo")
+    @NotNull(message = "O campo 'usuario' não pode ser nulo durante a inserção.")
     private UsuarioDTO usuario;
-    @NotNull(message = "video não pode ser nulo")
+
+    @NotNull(message = "O campo 'video' não pode ser nulo durante a inserção.")
     private VideoDTO video;
 
     public ExibicaoDTO(Exibicao entity){
@@ -49,3 +49,4 @@ public class ExibicaoDTO {
 
 
 }
+

@@ -3,6 +3,7 @@ package br.com.grupo44.netflips.fiap.videos.dominio.usuario.service;
 import br.com.grupo44.netflips.fiap.videos.dominio.usuario.dto.UsuarioDTO;
 import br.com.grupo44.netflips.fiap.videos.dominio.usuario.entities.Usuario;
 import br.com.grupo44.netflips.fiap.videos.dominio.usuario.repository.UsuarioRepository;
+import br.com.grupo44.netflips.fiap.videos.dominio.video.dto.VideoDTO;
 import com.mongodb.DuplicateKeyException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -22,6 +23,8 @@ import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -48,6 +51,18 @@ public class UsuarioService {
         return violacoesToList;
     }
 
+    public UsuarioDTO retornaFiltroFormatado(String nome, String email) throws Exception {
+        UsuarioDTO filtro = new UsuarioDTO();
+        if (nome != null && !nome.isBlank()){
+            filtro.setNome(nome);
+        }
+        if (email != null && !email.isBlank()){
+            filtro.setEmail(email);
+        }
+
+        return filtro;
+    }
+
     public Flux<Page<UsuarioDTO>> findAll(UsuarioDTO filtro, PageRequest page) {
         Criteria criteria = new Criteria();
 
@@ -70,7 +85,10 @@ public class UsuarioService {
 
     public Mono<UsuarioDTO> findById(String codigo) {
         return usuarioRepository.findById(codigo)
-                .map(UsuarioDTO::new)
+                .flatMap(usuario -> {
+                    UsuarioDTO usuarioDTO = new UsuarioDTO(usuario, usuario.getHistoricoExibicao());
+                    return Mono.just(usuarioDTO);
+                })
                 .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario não encontrado")));
     }
 
@@ -81,7 +99,7 @@ public class UsuarioService {
         BeanUtils.copyProperties(usuarioDTO, entity);
 
         return usuarioRepository.save(entity)
-                .map(savedEntity -> new UsuarioDTO(savedEntity))
+                .map(savedEntity -> new UsuarioDTO(savedEntity, new ArrayList<>()))
                 .onErrorResume(DuplicateKeyException.class, ex ->
                         Mono.error(new IllegalArgumentException("Usuário já cadastrado: " + ex.getMessage())))
                 .onErrorResume(OptimisticLockingFailureException.class, ex ->
@@ -103,7 +121,7 @@ public class UsuarioService {
         BeanUtils.copyProperties(usuarioDTO, entity);
 
         return usuarioRepository.save(entity)
-                .map(updatedEntity -> new UsuarioDTO(updatedEntity))
+                .map(updatedEntity -> new UsuarioDTO(updatedEntity, updatedEntity.getHistoricoExibicao()))
                 .onErrorResume(DuplicateKeyException.class, ex ->
                         Mono.error(new RuntimeException("Usuário já cadastrado: " + ex.getMessage())))
                 .onErrorResume(OptimisticLockingFailureException.class, ex ->

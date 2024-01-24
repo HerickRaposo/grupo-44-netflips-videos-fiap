@@ -18,6 +18,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -35,13 +36,16 @@ public class VideosController {
             @ApiResponse(responseCode = "500", description = "Error in the service")})
     @GetMapping
     public Flux<ResponseEntity<Page<VideoDTO>>> findAll(
-            @ModelAttribute VideoDTO filtro,
+            @RequestParam(required = false) String titulo,
+            @RequestParam(required = false) String categoriaBusca,
+            @RequestParam(required = false) LocalDateTime dataPub,
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "10") int size,
             @RequestParam(name = "sort", required = false, defaultValue = "dataPublicacao") String sort,
-            @RequestParam(name = "direction", required = false, defaultValue = "DESC") Sort.Direction direction) {
+            @RequestParam(name = "direction", required = false, defaultValue = "DESC") Sort.Direction direction) throws Exception {
 
         PageRequest pageRequest = PageRequest.of(page, size, Sort.by(direction, sort));
+        VideoDTO filtro = videoService.retornaFiltroFormatado(titulo,categoriaBusca,dataPub);
         return videoService.findAll(filtro, pageRequest)
                 .map(result -> new ResponseEntity<>(result, HttpStatus.OK));
     }
@@ -62,7 +66,7 @@ public class VideosController {
             @ApiResponse(responseCode = "400", description = "Bad request"),
             @ApiResponse(responseCode = "404", description = "Person not found"),
             @ApiResponse(responseCode = "500", description = "Erro no seervio")})
-    @PostMapping("/videos")
+    @PostMapping
     public Mono<ResponseEntity<?>> insertVideo(@RequestBody VideoDTO videoDTO) {
         List<String> violacoesToList = videoService.validate(videoDTO);
         if (!violacoesToList.isEmpty()) {
@@ -70,9 +74,7 @@ public class VideosController {
         }
 
         return videoService.insert(videoDTO)
-                .map(videoSaved -> ResponseEntity.created(
-                                ServletUriComponentsBuilder.fromCurrentRequest().path("/{codigo}")
-                                        .buildAndExpand(videoSaved.getCodigo()).toUri())
+                .map(videoSaved -> ResponseEntity.created(URI.create("/video/" + videoSaved.getCodigo()))
                         .body(videoSaved));
     }
 
@@ -99,8 +101,8 @@ public class VideosController {
             @ApiResponse(responseCode = "404", description = "Person not found"),
             @ApiResponse(responseCode = "500", description = "Erro no seervio")})
     @DeleteMapping("/{codigo}")
-    public ResponseEntity delete(@PathVariable String codigo) {
-        videoService.delete(codigo);
-        return ResponseEntity.noContent().build();
+    public Mono<ResponseEntity<Void>> delete(@PathVariable String codigo) {
+        return videoService.delete(codigo)
+                .then(Mono.just(ResponseEntity.noContent().<Void>build()));
     }
 }

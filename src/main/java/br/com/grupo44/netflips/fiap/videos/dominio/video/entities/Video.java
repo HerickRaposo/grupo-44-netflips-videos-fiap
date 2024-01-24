@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Document
 @Getter
@@ -21,6 +22,7 @@ public class Video {
     private String titulo;
     private String url;
     private LocalDateTime dataPublicacao;
+    private List<Long> categorias;
     @DBRef
     private Usuario autor;
     @Version

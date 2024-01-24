@@ -17,6 +17,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.net.URI;
 import java.util.List;
 
 @RestController
@@ -39,13 +40,15 @@ public class UsuarioController {
             @ApiResponse(responseCode = "500", description = "Erro no seervio")})
     @GetMapping
     public Flux<ResponseEntity<Page<UsuarioDTO>>> searchVideos(
-            @ModelAttribute UsuarioDTO filtro,
+            @RequestParam(name = "nome",required = false) String nome,
+            @RequestParam(name= "email", required = false) String email,
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "10") int size,
             @RequestParam(name = "sort", required = false, defaultValue = "nome") String sort,
-            @RequestParam(name = "direction", required = false, defaultValue = "DESC") Sort.Direction direction) {
+            @RequestParam(name = "direction", required = false, defaultValue = "DESC") Sort.Direction direction) throws Exception {
 
         PageRequest pageRequest = PageRequest.of(page, size, Sort.by(direction, sort));
+        UsuarioDTO filtro = usuarioService.retornaFiltroFormatado(nome,email);
         return usuarioService.findAll(filtro, pageRequest)
                 .map(result -> new ResponseEntity<>(result, HttpStatus.OK));
     }
@@ -77,10 +80,10 @@ public class UsuarioController {
         }
 
         return usuarioService.insert(usuarioDTO)
-                .map(usuarioSaved -> ResponseEntity.created(
-                                ServletUriComponentsBuilder.fromCurrentRequest().path("/{codigo}")
-                                        .buildAndExpand(usuarioSaved.getCodigo()).toUri())
-                        .body(usuarioSaved));
+                .map(usuarioSaved -> {
+                    URI location = URI.create("/usuario/" + usuarioSaved.getCodigo());
+                    return ResponseEntity.created(location).body(usuarioSaved);
+                });
     }
 
     @Operation(summary = "Atualiza usuário", method = "PUT")

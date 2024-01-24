@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -69,32 +70,35 @@ public class ExibicaoController {
             @ApiResponse(responseCode = "500", description = "Erro no seervio")})
     @PostMapping
     public Mono<ResponseEntity<?>> insert(@RequestBody ExibicaoDTO exibicaoDTO) {
-        List<String> violacoesToList = exibicaoService.validate(exibicaoDTO);
+        List<String> violacoesToList = exibicaoService.validate(exibicaoDTO,false);
         if (!violacoesToList.isEmpty()) {
             return Mono.just(ResponseEntity.badRequest().body(violacoesToList));
         }
 
         return exibicaoService.insert(exibicaoDTO)
-                .map(exibicaoSaved -> ResponseEntity.created(
-                                ServletUriComponentsBuilder.fromCurrentRequest().path("/{codigo}")
-                                        .buildAndExpand(exibicaoSaved.getCodigo()).toUri())
+                .map(exibicaoSaved -> ResponseEntity.created(URI.create("/exibicao/" + exibicaoSaved.getCodigo()))
                         .body(exibicaoSaved));
     }
 
     @Operation(summary = "Atualiza exibição", method = "PUT")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Found the book"),
-            @ApiResponse(responseCode = "400", description = "Bad request"),
-            @ApiResponse(responseCode = "404", description = "Person not found"),
-            @ApiResponse(responseCode = "500", description = "Erro no seervio")})
-    @PutMapping("/{codigo}")
-    public Mono<ResponseEntity<ExibicaoDTO>> update(@RequestBody ExibicaoDTO exibicaoDTO, @PathVariable String codigo) {
-        return Mono.just(exibicaoService.validate(exibicaoDTO))
-                .filter(List::isEmpty)
-                .flatMap(valid -> exibicaoService.update(codigo, exibicaoDTO))
-                .map(videoSaved -> ResponseEntity.ok(videoSaved))
-                .defaultIfEmpty(ResponseEntity.badRequest().build());
+            @ApiResponse(responseCode = "200", description = "Exibição atualizada com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Requisição inválida"),
+            @ApiResponse(responseCode = "404", description = "Exibição não encontrada"),
+            @ApiResponse(responseCode = "500", description = "Erro no serviço")
+    })
+    @PutMapping(value = "/{codigo}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<ResponseEntity<?>> update(
+            @RequestBody ExibicaoDTO exibicaoDTO,
+            @PathVariable String codigo) {
+
+        List<String> validationErrors = exibicaoService.validate(exibicaoDTO,true);
+
+        return validationErrors.isEmpty()
+                ? exibicaoService.update(codigo, exibicaoDTO).map(ResponseEntity::ok)
+                : Mono.just(ResponseEntity.badRequest().body(validationErrors));
     }
+
 
     @Operation(summary = "Deleta exibição", method = "DELETE")
     @ApiResponses(value = {
