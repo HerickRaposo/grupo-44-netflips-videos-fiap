@@ -5,6 +5,7 @@ import br.com.grupo44.netflips.fiap.videos.dominio.usuario.dto.UsuarioDTO;
 import br.com.grupo44.netflips.fiap.videos.dominio.usuario.entities.Usuario;
 import br.com.grupo44.netflips.fiap.videos.dominio.video.dto.VideoDTO;
 import br.com.grupo44.netflips.fiap.videos.dominio.video.entities.Video;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Null;
 import lombok.*;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ExibicaoDTO {
     @Null(message = "Codigo deve ser nulo")
     private String codigo;

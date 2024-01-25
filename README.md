@@ -1,93 +1,749 @@
-# GRUPO 44 NetFlips Videos FIAP
+# FIAP-GRUPO-44
+NetFlips
+## Introdução:
+
+O presente projeto foi implementado visando entrega de um sistema de exibição de videos utilizando tecnologias Spring Boot, Spring WebFlux, MongoDB além da utilização de testes unitáriss, mocks e de integração
+
+![img_2.png](img_2.png)
+
+<h1 align="center">
+  Desenvolvimento das APIs
+</h1>
+
+## Tecnologias
+
+- [Spring Boot](https://spring.io/projects/spring-boot):Modulo derivado do Spring Framework que facilita desenvolvimento de aplicações java implementando injeção e inversão de dependencias
+- [Sprig Webflux](https://docs.spring.io/spring-framework/reference/web/webflux.html): Permite trabalhar com programação reativa em aplicações Java com Spring.
+- [MongoDB](https://www.mongodb.com/pt-br): Banco de dados orientado a documentos livre, de código aberto e multiplataforma
+- [JUnit](https://junit.org/junit5/): O JUnit é um framework open-source, que se assemelha ao raio de testes software java
+- [Mockito](https://site.mockito.org/): Framework de teste de código aberto
+- [Postman](https://learning.postman.com/docs/developer/postman-api/intro-api/): Ferramenta destinada a desenvolvedores que possibilita testar chamadas API e gerar documentação de forma iterativa.Foi usado neste projeto para gerar collections e realizar teste de chamadas aos endpoints;
+- [Tortoise](https://tortoisegit.org/docs/tortoisegit/): Ferramenta gerencial que facilita manipulação de projetos em GIT. Foi usado neste projeto para resolução de conflitos.
+- [Sourcetree](https://confluence.atlassian.com/get-started-with-sourcetree): Assim como o Tortoise é uma ferramenta gerencial para facilitar o desenvolvimento de projetos em Git, no entanto possui uma interface mais receptivel e navegabilidade facilitada.Foi usado neste projeto paa navegação e criação de ramos.
+## Práticas adotadas
 
 
+- Uso de DTOs para a API
+- Injeção de Dependências
 
-## Getting started
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## Como Executar
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+### Localmente
+- Clonar repositório git
+- Construir o projeto:
+```
+./mvnw clean package
+```
+- Executar:
 
-## Add your files
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+A API poderá ser acessada em [localhost:8080](http://localhost:8080)
+
+O Swagger poderá ser visualizado em [localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+
+
+<h1 align="center">
+  API Usuario
+</h1>
+
+<p align="center">
+ https://gitlab.com/mattec1/grupo-44-netflips-videos-fiap
+</p>
+
+API para gerenciar usuarios.Deve ser executado em primeira instancia antes do cadastro de videos e exibição.
+
+## API Endpoints
+
+Para fazer as requisições HTTP abaixo, foi utilizada a ferramenta [http](https://web.postman.co/workspaces):
+
+Lista de usuarios apresenta fluxo reativo com respostas http de elementos usuários os quais possuem listas de historico de exibição e demais informações
+
+LISTAR USUARIO:
+
+- GET /usuario
+```
+http GET http://localhost:8080/usuario
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+[
+	{
+		"headers": {},
+		"body": {
+			"content": [
+				{
+					"codigo": "65b18f7dcd84b0450c9c8e61",
+					"nome": "Marcos Pereira",
+					"email": "pereira.marcos@example.com",
+					"cpf": "792.130.600-41",
+					"telefone": "(35)99949-1526",
+					"dataNascimento": "1974-02-27",
+					"historicoExibicao": []
+				},
+				{
+					"codigo": "65afb552d39a0455941d790c",
+					"nome": "Joao Rocha",
+					"email": "joao.rocha@example.com",
+					"cpf": "175.475.496-16",
+					"telefone": "(35)98765-1778",
+					"dataNascimento": "1971-06-15",
+					"historicoExibicao": [
+						{
+							"codigo": "65b051af2051060580aa4477",
+							"dataVisualizacao": "2024-01-23T12:34:56",
+							"pontuacao": 4.5,
+							"visualizado": true,
+							"recomenda": true
+						}
+					]
+				},
+				{
+					"codigo": "65afb1b8530647553bbbd0c7",
+					"nome": "Herick Raposo",
+					"email": "herickraposo@example.com",
+					"cpf": "030.601.856-03",
+					"telefone": "(35)98765-1778",
+					"dataNascimento": "1997-10-21",
+					"historicoExibicao": [
+						{
+							"codigo": "65b03eae07c56d07afe465c4",
+							"dataVisualizacao": "2024-01-23T12:34:56",
+							"pontuacao": 4.5,
+							"recomenda": false
+						},
+						{
+							"codigo": "65b040295d1f7c43501cd112",
+							"dataVisualizacao": "2024-01-23T12:34:56",
+							"pontuacao": 4.5,
+							"recomenda": false
+						},
+						{
+							"codigo": "65b041909ba13f2a9aff692c",
+							"dataVisualizacao": "2024-01-23T12:34:56",
+							"pontuacao": 4.5,
+							"recomenda": false
+						},
+						{
+							"codigo": "65b045ac79ff0a5273575e94",
+							"dataVisualizacao": "2024-01-23T12:34:56",
+							"pontuacao": 4.5,
+							"recomenda": true
+						}
+					]
+				}
+			],
+			"pageable": {
+				"pageNumber": 0,
+				"pageSize": 10,
+				"sort": {
+					"empty": false,
+					"sorted": true,
+					"unsorted": false
+				},
+				"offset": 0,
+				"paged": true,
+				"unpaged": false
+			},
+			"last": true,
+			"totalPages": 1,
+			"totalElements": 3,
+			"size": 10,
+			"number": 0,
+			"sort": {
+				"empty": false,
+				"sorted": true,
+				"unsorted": false
+			},
+			"numberOfElements": 3,
+			"first": true,
+			"empty": false
+		},
+		"statusCode": "OK",
+		"statusCodeValue": 200
+	}
+]
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/mattec1/grupo-44-netflips-videos-fiap.git
-git branch -M main
-git push -uf origin main
+CADASTRO DE USUARIO
+- POST /usuario
+```
+http POST http://localhost:8080/usuario
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+Request body:
+
+{
+  "nome": "Marcos Pereira",
+  "email": "pereira.marcos@example.com",
+  "cpf": "792.130.600-41",
+  "telefone": "(35)99949-1526",
+  "dataNascimento": "1974-02-27"
+}
+
+Response:
+{
+    "codigo": "65b18f7dcd84b0450c9c8e61",
+    "nome": "Marcos Pereira",
+    "email": "pereira.marcos@example.com",
+    "cpf": "792.130.600-41",
+    "telefone": "(35)99949-1526",
+    "dataNascimento": "1974-02-27",
+    "historicoExibicao": []
+}
+
 ```
 
-## Integrate with your tools
+BUSCA DE USUARIO POR CODIGO
+- GET /usuario/{codigo}
+```
+GET http://localhost:8080/pessoas/65afb552d39a0455941d790c
+HTTP/1.1 200 OK
+Content-Type: application/json
 
-- [ ] [Set up project integrations](https://gitlab.com/mattec1/grupo-44-netflips-videos-fiap/-/settings/integrations)
+{
+    {
+    "codigo": "65afb552d39a0455941d790c",
+    "nome": "Joao Rocha",
+    "email": "joao.rocha@example.com",
+    "cpf": "175.475.496-16",
+    "telefone": "(35)98765-1778",
+    "dataNascimento": "1971-06-15",
+    "historicoExibicao": [
+        {
+            "codigo": "65b051af2051060580aa4477",
+            "dataVisualizacao": "2024-01-23T12:34:56",
+            "pontuacao": 4.5,
+            "visualizado": true,
+            "recomenda": true
+        }
+    ]
+}
+}
+```
+Atualizando usuario:
+- PUT /usuario/{codigo}
+```
+http://localhost:8080/usuario/657ed5327ecc4c4548497a10
+HTTP/1.1 200 OK
+Content-Type: application/json
+transfer-encoding: chunked
+{
+  "nome": "Herick",
+  "email": "raposo@example.com",
+  "cpf": "123.456.789-09",
+  "telefone": "(35)98765-4321",
+  "dataNascimento": "1990-01-01"
+}
 
-## Collaborate with your team
+```
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+Deletando usuario:
+- DELETE /usuario/{codigo}
+```
+DELETE http://localhost:8080/usuario/657ed5327ecc4c4548497a10
+HTTP/1.1 204 No Content
+Content-Length: 142
+Content-Type: application/json
 
-## Test and Deploy
+```
 
-Use the built-in continuous integration in GitLab.
+<h1 align="center">
+  API Video
+</h1>
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+<p align="center">
+ https://gitlab.com/mattec1/grupo-44-netflips-videos-fiap
+</p>
 
-***
+API para gerenciamento de Videos. Após manipulçao de usuarios deve-se inserir os videos e manipula-los posteriormente conforme necessidade.
 
-# Editing this README
+## API Endpoints
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
 
-## Suggestions for a good README
+Lista de Videos
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+- GET /video
 
-## Name
-Choose a self-explaining name for your project.
+```
+http GET http://localhost:8080/video
+[
+    {
+        "headers": {},
+        "body": {
+            "content": [
+                {
+                    "codigo": "65aff31d12e1b2616604a6c4",
+                    "titulo": "High School Musical",
+                    "url": "https://www.exemplo.com/highschoolmusical",
+                    "dataPublicacao": "2024-01-23T12:34:56",
+                    "nomesCategorias": [
+                        "Filme",
+                        "Musical",
+                        "Teem"
+                    ]
+                },
+                {
+                    "codigo": "65aff35812e1b2616604a6c5",
+                    "titulo": "Panico",
+                    "url": "https://www.exemplo.com/panico",
+                    "dataPublicacao": "2024-01-23T12:34:56",
+                    "nomesCategorias": [
+                        "Filme",
+                        "Terror"
+                    ]
+                },
+                {
+                    "codigo": "65b197624d9eda1d250e273c",
+                    "titulo": "Homem Aranha no Aranhaverso",
+                    "url": "https://www.exemplo.com/homem_aranha_aranhaverso",
+                    "dataPublicacao": "2024-01-22T20:34:56",
+                    "nomesCategorias": [
+                        "Filme",
+                        "Aventura",
+                        "Fantasia",
+                        "Teem"
+                    ]
+                },
+                {
+                    "codigo": "65b1966e4d9eda1d250e273b",
+                    "titulo": "O Massacre da Serra Elétrica",
+                    "url": "https://www.exemplo.com/massacre",
+                    "dataPublicacao": "2024-01-22T18:34:56",
+                    "nomesCategorias": [
+                        "Filme",
+                        "Terror"
+                    ]
+                }
+            ],
+            "pageable": {
+                "pageNumber": 0,
+                "pageSize": 10,
+                "sort": {
+                    "empty": false,
+                    "sorted": true,
+                    "unsorted": false
+                },
+                "offset": 0,
+                "paged": true,
+                "unpaged": false
+            },
+            "last": true,
+            "totalPages": 1,
+            "totalElements": 4,
+            "size": 10,
+            "number": 0,
+            "sort": {
+                "empty": false,
+                "sorted": true,
+                "unsorted": false
+            },
+            "numberOfElements": 4,
+            "first": true,
+            "empty": false
+        },
+        "statusCode": "OK",
+        "statusCodeValue": 200
+    }
+]
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+Possiveis filtros;
+- - **pagina**:Parametro não obrigatório que define o numero da pagina que o usuário deseja acessar
+- - **tamanho**: Parametro não obrigatório que define a quantidade de itens que serão retornados pela listagem
+- - **Titulo**: Parametro não obrigatório que filtra a lista pela String do tituloe;
+- - **Data publicação**:Parametro não obrigatório que filtra por localdatetime da data de publicação;
+- - **Categoria**:Parametro não obrigatório que filtra a lista com base no nome da categoria filtrada
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+* GET /video/{codigo}
+```
+http://localhost:8080/video/65aff31d12e1b2616604a6c4
+ {
+    "codigo": "65aff31d12e1b2616604a6c4",
+    "titulo": "High School Musical",
+    "url": "https://www.exemplo.com/highschoolmusical",
+    "dataPublicacao": "2024-01-23T12:34:56",
+    "nomesCategorias": [
+        "Filme",
+        "Musical",
+        "Teem"
+    ]
+}
+```
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+CADASTRO DE VIDEOS
+* POST /eletrodomesticos
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+```
+http POST http://localhost:8080/video
+HTTP/1.1 201 CREATED
+Content-Type: application/json
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+{
+  "titulo": "O chamado 3",
+  "url": "https://www.exemplo.com/ochamado_3",
+  "dataPublicacao": "2023-12-31T20:35:56",
+  "categorias": [1,7,8]
+}
+```
+ATUALIZAÇÃO DE VIDEO:
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+- PUT /video/{codgio}
+```
+http://localhost:8080/video/65b199f64d9eda1d250e273f
+HTTP/1.1 200 OK
+Content-Length: 129
+Content-Type: application/json
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+{
+  "titulo": "O chamado",
+  "url": "https://www.exemplo.com/ochamado",
+  "dataPublicacao": "2023-12-31T20:35:56",
+  "categorias": [1,7,8]
+}
+```
+DELEÇÃO DE VIDEO
+- DELETE /video/{codigo}
+```
+DELETE http://localhost:8080/video/65b199f64d9eda1d250e273f
+HTTP/1.1 204 No Content
+Content-Length: 142
+Content-Type: application/json
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+```
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+**CATEGORIAS**
+1. Filme;
+2. Serie;
+3. Documentario;
+4. Comedia;
+5. Ação;
+6. Aventura;
+7. Suspense;
+8. Terror;
+9. Fantasia;
+10. Ficção Cientifica;
+11. Musical;
+12. Historico;
+13. Anime;
+14. Dorama;
+15. Teen;
+16. Sitcom;
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+<h1 align="center">
+  API EXIBIÇÃO
+</h1>
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+<p align="center">
+ https://gitlab.com/mattec1/grupo-44-netflips-videos-fiap
+</p>
 
-## License
-For open source projects, say how it is licensed.
+API para gerenciamento de Exibições. Após manipulçao de usuarios e videos deve-se inserir os visualizações de videos que serão vinculadas ao historico do usuario.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+
+## API Endpoints
+
+LISTAR EXIBIÇÃO:
+
+- GET /exibicao
+
+```
+GET http://localhost:8080/exibicao
+
+RESPONSE
+[
+    {
+        "headers": {},
+        "body": {
+            "content": [
+                {
+                    "codigo": "65b1ae094d9eda1d250e2740",
+                    "dataVisualizacao": "2024-01-23T21:00:56",
+                    "pontuacao": 5.0,
+                    "visualizado": true,
+                    "recomenda": true,
+                    "usuario": {
+                        "codigo": "65afb1b8530647553bbbd0c7",
+                        "nome": "Herick Raposo",
+                        "email": "herickraposo@example.com",
+                        "cpf": "030.601.856-03",
+                        "telefone": "(35)98765-1778",
+                        "dataNascimento": "1997-10-21",
+                        "historicoExibicao": null
+                    },
+                    "video": {
+                        "codigo": "65aff35812e1b2616604a6c5",
+                        "titulo": "Panico",
+                        "url": "https://www.exemplo.com/panico",
+                        "dataPublicacao": "2024-01-23T12:34:56",
+                        "nomesCategorias": [
+                            "Filme",
+                            "Terror"
+                        ]
+                    }
+                },
+                {
+                    "codigo": "65b1ae794d9eda1d250e2741",
+                    "dataVisualizacao": "2024-01-23T18:00:56",
+                    "pontuacao": 5.0,
+                    "visualizado": true,
+                    "recomenda": true,
+                    "usuario": {
+                        "codigo": "65afb1b8530647553bbbd0c7",
+                        "nome": "Herick Raposo",
+                        "email": "herickraposo@example.com",
+                        "cpf": "030.601.856-03",
+                        "telefone": "(35)98765-1778",
+                        "dataNascimento": "1997-10-21",
+                        "historicoExibicao": null
+                    },
+                    "video": {
+                        "codigo": "65b1966e4d9eda1d250e273b",
+                        "titulo": "O Massacre da Serra Elétrica",
+                        "url": "https://www.exemplo.com/massacre",
+                        "dataPublicacao": "2024-01-22T18:34:56",
+                        "nomesCategorias": [
+                            "Filme",
+                            "Terror"
+                        ]
+                    }
+                },
+                {
+                    "codigo": "65b1aea44d9eda1d250e2742",
+                    "dataVisualizacao": "2024-01-23T18:00:56",
+                    "pontuacao": 5.0,
+                    "visualizado": true,
+                    "recomenda": false,
+                    "usuario": {
+                        "codigo": "65afb1b8530647553bbbd0c7",
+                        "nome": "Herick Raposo",
+                        "email": "herickraposo@example.com",
+                        "cpf": "030.601.856-03",
+                        "telefone": "(35)98765-1778",
+                        "dataNascimento": "1997-10-21",
+                        "historicoExibicao": null
+                    },
+                    "video": {
+                        "codigo": "65b197624d9eda1d250e273c",
+                        "titulo": "Homem Aranha no Aranhaverso",
+                        "url": "https://www.exemplo.com/homem_aranha_aranhaverso",
+                        "dataPublicacao": "2024-01-22T20:34:56",
+                        "nomesCategorias": [
+                            "Filme",
+                            "Aventura",
+                            "Fantasia",
+                            "Teem"
+                        ]
+                    }
+                },
+                {
+                    "codigo": "65b051af2051060580aa4477",
+                    "dataVisualizacao": "2024-01-23T12:34:56",
+                    "pontuacao": 4.5,
+                    "visualizado": true,
+                    "recomenda": true,
+                    "usuario": {
+                        "codigo": "65afb552d39a0455941d790c",
+                        "nome": "Joao Rocha",
+                        "email": "joao.rocha@example.com",
+                        "cpf": "175.475.496-16",
+                        "telefone": "(35)98765-1778",
+                        "dataNascimento": "1971-06-15",
+                        "historicoExibicao": null
+                    },
+                    "video": {
+                        "codigo": "65aff31d12e1b2616604a6c4",
+                        "titulo": "High School Musical",
+                        "url": "https://www.exemplo.com/highschoolmusical",
+                        "dataPublicacao": "2024-01-23T12:34:56",
+                        "nomesCategorias": [
+                            "Filme",
+                            "Musical",
+                            "Teem"
+                        ]
+                    }
+                }
+            ],
+            "pageable": {
+                "pageNumber": 0,
+                "pageSize": 10,
+                "sort": {
+                    "empty": false,
+                    "sorted": true,
+                    "unsorted": false
+                },
+                "offset": 0,
+                "paged": true,
+                "unpaged": false
+            },
+            "last": true,
+            "totalPages": 1,
+            "totalElements": 4,
+            "size": 10,
+            "number": 0,
+            "sort": {
+                "empty": false,
+                "sorted": true,
+                "unsorted": false
+            },
+            "numberOfElements": 4,
+            "first": true,
+            "empty": false
+        },
+        "statusCode": "OK",
+        "statusCodeValue": 200
+    }
+]
+
+```
+BUSCAR POR CODIGO:
+
+- GET /exibicao/{codio} 
+
+```
+GET http://localhost:8080/exibicao/65b051af2051060580aa4477
+
+RESPONSE:
+{
+    "codigo": "65b051af2051060580aa4477",
+    "dataVisualizacao": "2024-01-23T12:34:56",
+    "pontuacao": 4.5,
+    "visualizado": true,
+    "recomenda": true,
+    "usuario": {
+        "codigo": "65afb552d39a0455941d790c",
+        "nome": "Joao Rocha",
+        "email": "joao.rocha@example.com",
+        "cpf": "175.475.496-16",
+        "telefone": "(35)98765-1778",
+        "dataNascimento": "1971-06-15",
+        "historicoExibicao": null
+    },
+    "video": {
+        "codigo": "65aff31d12e1b2616604a6c4",
+        "titulo": "High School Musical",
+        "url": "https://www.exemplo.com/highschoolmusical",
+        "dataPublicacao": "2024-01-23T12:34:56",
+        "nomesCategorias": [
+            "Filme",
+            "Musical",
+            "Teem"
+        ]
+    }
+}
+```
+INSERIR EXIBIÇÃO:
+
+- POST /exibicao
+```
+POST http://localhost:8080/exibicao
+
+HTTP/1.1 201 CREATED
+Content-Type: application/json
+
+REQUEST BODY
+
+{
+  "dataVisualizacao": "2024-01-23T18:00:56",
+  "pontuacao": 5,
+  "visualizado": true,
+  "recomenda": false,
+  "usuario": {
+    "codigo": "65afb1b8530647553bbbd0c7"
+  },
+  "video": {
+    "codigo": "65b197624d9eda1d250e273c"
+  }
+}
+
+
+RESPONSE
+
+{
+    "codigo": "65b1aea44d9eda1d250e2742",
+    "dataVisualizacao": "2024-01-23T18:00:56",
+    "pontuacao": 5.0,
+    "visualizado": true,
+    "recomenda": false,
+    "usuario": {
+        "codigo": "65afb1b8530647553bbbd0c7",
+        "nome": "Herick Raposo",
+        "email": "herickraposo@example.com",
+        "cpf": "030.601.856-03",
+        "telefone": "(35)98765-1778",
+        "dataNascimento": "1997-10-21",
+        "historicoExibicao": null
+    },
+    "video": {
+        "codigo": "65b197624d9eda1d250e273c",
+        "titulo": "Homem Aranha no Aranhaverso",
+        "url": "https://www.exemplo.com/homem_aranha_aranhaverso",
+        "dataPublicacao": "2024-01-22T20:34:56",
+        "nomesCategorias": [
+            "Filme",
+            "Aventura",
+            "Fantasia",
+            "Teem"
+        ]
+    }
+}
+
+
+```
+ATUALIZA EXIBIÇÃO:
+
+- PUT /exibicao/{codigo}
+
+```
+PUT http://localhost:8080/exibicao/65b051af2051060580aa4477
+
+REQUEST BODY
+{
+    "dataVisualizacao": "2024-01-23T12:34:56",
+    "pontuacao": 4.5,
+    "visualizado": true,
+    "recomenda": true
+}
+
+
+RESPOSE
+
+{
+    "codigo": "65b051af2051060580aa4477",
+    "dataVisualizacao": "2024-01-23T12:34:56",
+    "pontuacao": 4.5,
+    "visualizado": true,
+    "recomenda": true,
+    "usuario": {
+        "codigo": "65afb552d39a0455941d790c",
+        "nome": "Joao Rocha",
+        "email": "joao.rocha@example.com",
+        "cpf": "175.475.496-16",
+        "telefone": "(35)98765-1778",
+        "dataNascimento": "1971-06-15",
+        "historicoExibicao": null
+    },
+    "video": {
+        "codigo": "65aff31d12e1b2616604a6c4",
+        "titulo": "High School Musical",
+        "url": "https://www.exemplo.com/highschoolmusical",
+        "dataPublicacao": "2024-01-23T12:34:56",
+        "nomesCategorias": [
+            "Filme",
+            "Musical",
+            "Teem"
+        ]
+    }
+}
+
+```
+ATUALIZA EXIBIÇÃO:
+
+- DELETE /exibicao/{codigo}
+```
+
+DELETE:http://localhost:8080/exibicao/65b051af2051060580aa4477
+
+```

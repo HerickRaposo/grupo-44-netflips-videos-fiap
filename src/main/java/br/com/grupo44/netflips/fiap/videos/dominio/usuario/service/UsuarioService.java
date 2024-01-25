@@ -1,5 +1,7 @@
 package br.com.grupo44.netflips.fiap.videos.dominio.usuario.service;
 
+import br.com.grupo44.netflips.fiap.videos.dominio.exibicao.dto.ExibicaoDTO;
+import br.com.grupo44.netflips.fiap.videos.dominio.exibicao.entity.Exibicao;
 import br.com.grupo44.netflips.fiap.videos.dominio.usuario.dto.UsuarioDTO;
 import br.com.grupo44.netflips.fiap.videos.dominio.usuario.entities.Usuario;
 import br.com.grupo44.netflips.fiap.videos.dominio.usuario.repository.UsuarioRepository;
@@ -78,9 +80,9 @@ public class UsuarioService {
 
         return reactiveMongoTemplate.find(query.with(page), Usuario.class)
                 .collectList()
-                .map(listaUsuarios -> new PageImpl<>(listaUsuarios, page, listaUsuarios.size()))
-                .flux()
-                .map(pageResult -> pageResult.map(UsuarioDTO::new));
+                .map(listaUsuario -> new PageImpl<>(listaUsuario, page, listaUsuario.size()))
+                .map(pageResult -> pageResult.map(usuario -> new UsuarioDTO(usuario, usuario.getHistoricoExibicao())))
+                .flux();
     }
 
     public Mono<UsuarioDTO> findById(String codigo) {

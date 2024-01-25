@@ -60,7 +60,7 @@ public class UsuarioDTO {
     public UsuarioDTO(Usuario entity, List<Exibicao> historicoExibicao){
         this(entity);
         this.historicoExibicao = new ArrayList<>();
-        if (historicoExibicao != null && historicoExibicao.isEmpty()){
+        if (historicoExibicao != null && !historicoExibicao.isEmpty()){
             for (Exibicao exibicao : historicoExibicao){
                 this.historicoExibicao.add(new ExibicaoDTO(exibicao));
             }
