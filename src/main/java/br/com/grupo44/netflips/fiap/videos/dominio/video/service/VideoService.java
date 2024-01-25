@@ -1,10 +1,11 @@
 package br.com.grupo44.netflips.fiap.videos.dominio.video.service;
 
 import br.com.grupo44.netflips.fiap.videos.dominio.categoria.Categoria;
+import br.com.grupo44.netflips.fiap.videos.dominio.exibicao.service.ExibicaoService;
 import br.com.grupo44.netflips.fiap.videos.dominio.usuario.dto.UsuarioDTO;
-import br.com.grupo44.netflips.fiap.videos.dominio.usuario.entities.Usuario;
-import br.com.grupo44.netflips.fiap.videos.dominio.usuario.repository.UsuarioRepository;
+import br.com.grupo44.netflips.fiap.videos.dominio.usuario.service.UsuarioService;
 import br.com.grupo44.netflips.fiap.videos.dominio.video.dto.VideoDTO;
+import br.com.grupo44.netflips.fiap.videos.dominio.exibicao.dto.ExibicaoDTO;
 import br.com.grupo44.netflips.fiap.videos.dominio.video.entities.Video;
 import br.com.grupo44.netflips.fiap.videos.dominio.video.repository.VideoRepository;
 import com.mongodb.DuplicateKeyException;
@@ -16,7 +17,9 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
@@ -25,12 +28,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
+
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,7 +42,10 @@ public class VideoService {
     private VideoRepository videoRepository;
 
     @Autowired
-    private UsuarioRepository usuarioRepository;
+    private UsuarioService usuarioService;
+
+    @Autowired
+    private ExibicaoService exibicaoService;
 
     @Autowired
     private final ReactiveMongoTemplate reactiveMongoTemplate;
@@ -159,9 +165,63 @@ public class VideoService {
                         .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Video não encontrado")))
         );
     }
+
     private void  mapperDtoToEntity(VideoDTO dto, Video entity){
          entity.setTitulo(dto.getTitulo());
          entity.setUrl(dto.getUrl());
          entity.setDataPublicacao(dto.getDataPublicacao());
     }
+
+    public Flux<Page<VideoDTO>> recomendarVideos(String codigoUsuario, PageRequest page, VideoDTO videoDTO) {
+        Mono<UsuarioDTO> usuarioMono = usuarioService.findById(codigoUsuario);
+        UsuarioDTO usuarioDTO = usuarioMono.block();
+
+        if (usuarioDTO == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado");
+        }
+
+        List<String> codigosExibicoesRecomendadas = usuarioDTO.getHistoricoExibicao().stream()
+                .filter(ExibicaoDTO::getRecomenda)
+                .map(ExibicaoDTO::getCodigo)
+                .collect(Collectors.toList());
+
+        Flux<ExibicaoDTO> exibicaoDTOFlux = exibicaoService.findExibicoesPorCodigoss(codigosExibicoesRecomendadas);
+        List<ExibicaoDTO> exibicoesRecomendadas = exibicaoDTOFlux.collectList().block();
+
+        if (exibicoesRecomendadas == null || exibicoesRecomendadas.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Nenhuma exibição recomendada encontrada");
+        }
+
+        Map<Long, Long> categoriasMaisFrequentes = exibicoesRecomendadas.stream()
+                .flatMap(exibicao -> exibicao.getVideo().getCategorias().stream())
+                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+
+        Map<String, Long> categoriasStringMaisFrequentes = categoriasMaisFrequentes.entrySet().stream()
+                .collect(Collectors.toMap(entry -> String.valueOf(entry.getKey()), Map.Entry::getValue));
+
+        List<String> categoriasOrdenadas = categoriasStringMaisFrequentes.entrySet().stream()
+                .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+
+        List<VideoDTO> videosRecomendados = new ArrayList<>();
+        Set<String> videosRecomendadosCodigos = new HashSet<>();
+
+        for (String categoria : categoriasOrdenadas) {
+            Flux<Page<VideoDTO>> videosPorCategoriaFlux = findAll(new VideoDTO(), PageRequest.of(0, 10));
+
+            List<VideoDTO> videosPorCategoria = videosPorCategoriaFlux.blockFirst().getContent().stream()
+                    .filter(v -> v.getCategorias().contains(categoria))
+                    .collect(Collectors.toList());
+            System.out.println("Videos aqui -> " + videosPorCategoria.toString());
+            if (!videosPorCategoria.isEmpty()){
+                VideoDTO videoRecomendado = videosPorCategoria.get(0);
+                videosRecomendados.add(videoRecomendado);
+                videosRecomendadosCodigos.add(videoRecomendado.getCodigo());
+            }
+        }
+
+        return Flux.just(new PageImpl<>(videosRecomendados, page, videosRecomendados.size()));
+    }
+
 }

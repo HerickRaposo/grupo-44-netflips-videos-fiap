@@ -105,4 +105,28 @@ public class VideosController {
         return videoService.delete(codigo)
                 .then(Mono.just(ResponseEntity.noContent().<Void>build()));
     }
+
+    @Operation(summary = "Retorna lista de vides recomendados para usuario podendo ser filtrado por titulo e data", method = "GET")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Found videos"),
+            @ApiResponse(responseCode = "400", description = "Bad request"),
+            @ApiResponse(responseCode = "404", description = "Person not found"),
+            @ApiResponse(responseCode = "500", description = "Error in the service")})
+    @GetMapping("/recomendavideousuario/{codigoUsuario}")
+    public Flux<ResponseEntity<Page<VideoDTO>>> obterVideosRecomendadosParaUsuario(
+            @PathVariable String codigoUsuario,
+            @RequestParam(required = false) String titulo,
+            @RequestParam(required = false) String categoriaBusca,
+            @RequestParam(required = false) LocalDateTime dataPub,
+            @RequestParam(name = "page", required = false, defaultValue = "0") int page,
+            @RequestParam(name = "size", required = false, defaultValue = "10") int size,
+            @RequestParam(name = "sort", required = false, defaultValue = "dataPublicacao") String sort,
+            @RequestParam(name = "direction", required = false, defaultValue = "DESC") Sort.Direction direction) throws Exception {
+
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(direction, sort));
+        VideoDTO filtro = videoService.retornaFiltroFormatado(titulo,categoriaBusca,dataPub);
+        return videoService.recomendarVideos(codigoUsuario, pageRequest,filtro)
+                .map(result -> new ResponseEntity<>(result, HttpStatus.OK));
+    }
+
 }

@@ -83,6 +83,17 @@ public class ExibicaoService {
                 .flux();
     }
 
+    public Flux<ExibicaoDTO> findExibicoesPorCodigoss(List<String> listaIds) {
+        Criteria criteria = new Criteria();
+        criteria.and("codigo").in(listaIds);
+
+        Query query = new Query(criteria);
+
+        return reactiveMongoTemplate.find(query, Exibicao.class)
+                .map(exibicao -> new ExibicaoDTO(exibicao, exibicao.getUsuario(), exibicao.getVideo()));
+    }
+
+
     public Mono<ExibicaoDTO> findById(String codigo) {
         return exibicaoRepository.findById(codigo)
                 .map(exibicao -> new ExibicaoDTO(exibicao, exibicao.getUsuario(), exibicao.getVideo()))
