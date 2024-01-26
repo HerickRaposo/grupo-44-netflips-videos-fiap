@@ -172,6 +172,7 @@ public class VideoService {
          entity.setDataPublicacao(dto.getDataPublicacao());
     }
 
+    //TODO - GERAL
     public Flux<Page<VideoDTO>> recomendarVideos(String codigoUsuario, PageRequest page, VideoDTO videoDTO) {
         Mono<UsuarioDTO> usuarioMono = usuarioService.findById(codigoUsuario);
         UsuarioDTO usuarioDTO = usuarioMono.block();
@@ -196,9 +197,11 @@ public class VideoService {
                 .flatMap(exibicao -> exibicao.getVideo().getCategorias().stream())
                 .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
 
+        
         Map<String, Long> categoriasStringMaisFrequentes = categoriasMaisFrequentes.entrySet().stream()
                 .collect(Collectors.toMap(entry -> String.valueOf(entry.getKey()), Map.Entry::getValue));
 
+        
         List<String> categoriasOrdenadas = categoriasStringMaisFrequentes.entrySet().stream()
                 .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
                 .map(Map.Entry::getKey)
@@ -207,9 +210,11 @@ public class VideoService {
         List<VideoDTO> videosRecomendados = new ArrayList<>();
         Set<String> videosRecomendadosCodigos = new HashSet<>();
 
+        //TODO - O FINDALL ESTÁ RETORNANDO NULL MESMO EXISTINDO OS DADOS NA BASE.
         for (String categoria : categoriasOrdenadas) {
             Flux<Page<VideoDTO>> videosPorCategoriaFlux = findAll(new VideoDTO(), PageRequest.of(0, 10));
-
+            
+            //TODO - VERIFICAR PORQUE ESTÁ LISTA ESTÁ VINDO VAZIA.
             List<VideoDTO> videosPorCategoria = videosPorCategoriaFlux.blockFirst().getContent().stream()
                     .filter(v -> v.getCategorias().contains(categoria))
                     .collect(Collectors.toList());
