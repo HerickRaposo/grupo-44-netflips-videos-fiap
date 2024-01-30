@@ -1,5 +1,12 @@
 # FIAP-GRUPO-44
 NetFlips
+
+
+## Link do vídeo da apresemtação grupo 44
+https://drive.google.com/file/d/1M0nftE3eVmKWqQwsqs5u3gyTMF4FsDMI/view?usp=sharing
+
+
+
 ## Introdução:
 
 O presente projeto foi implementado visando entrega de um sistema de exibição de videos utilizando tecnologias Spring Boot, Spring WebFlux, MongoDB além da utilização de testes unitáriss, mocks e de integração
