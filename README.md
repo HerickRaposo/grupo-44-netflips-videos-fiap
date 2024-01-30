@@ -2,7 +2,7 @@
 NetFlips
 
 
-## Link do vídeo da apresemtação grupo 44
+## Link do vídeo da apresentação grupo 44
 https://drive.google.com/file/d/1M0nftE3eVmKWqQwsqs5u3gyTMF4FsDMI/view?usp=sharing
 
 
