@@ -4,7 +4,6 @@ NetFlips
 
 O presente projeto foi implementado visando entrega de um sistema de exibição de videos utilizando tecnologias Spring Boot, Spring WebFlux, MongoDB além da utilização de testes unitáriss, mocks e de integração
 
-![img_2.png](img_2.png)
 
 <h1 align="center">
   Desenvolvimento das APIs
