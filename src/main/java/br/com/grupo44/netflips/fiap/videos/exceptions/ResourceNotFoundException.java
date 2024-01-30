@@ -1,4 +1,4 @@
-package br.com.grupo44.netflips.fiap.videos.exceptions
+package br.com.grupo44.netflips.fiap.videos.exceptions;
 
 public class ResourceNotFoundException extends RuntimeException{
 
